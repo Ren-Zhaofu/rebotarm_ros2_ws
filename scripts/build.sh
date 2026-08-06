@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="$(dirname -- "${SCRIPT_DIR}")"
+
+source /opt/ros/humble/setup.bash
+
+cd "${WORKSPACE_DIR}"
+colcon build --symlink-install "$@"
+
+echo
+echo "编译完成。使用下面的命令加载工作空间环境："
+echo "source ${WORKSPACE_DIR}/install/setup.bash"
