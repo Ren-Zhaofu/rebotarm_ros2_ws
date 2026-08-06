@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -16,6 +17,14 @@ constexpr std::size_t kMotorCount = 6;
 std::atomic_bool g_running{true};
 
 void stop(int) { g_running = false; }
+
+std::string center_cell(const std::string &text, std::size_t width) {
+  const std::string value = text.size() <= width ? text : text.substr(0, width);
+  const auto padding = width - value.size();
+  const auto left = padding / 2;
+  return std::string(left, ' ') + value +
+         std::string(padding - left, ' ');
+}
 
 void print_states(
     const std::array<rs_motor_sdk::MotorState, kMotorCount> &states,
@@ -32,22 +41,22 @@ void print_states(
   const std::string divider =
       "+--------+---------------+------------------+----------+----------+--------+\n";
   std::cout << divider
-            << "| " << std::left << std::setw(joint_width - 1) << "Joint"
-            << "| " << std::setw(position_width - 1) << "Position (rad)"
-            << "| " << std::setw(velocity_width - 1) << "Velocity (rad/s)"
-            << "| " << std::setw(effort_width - 1) << "Effort"
-            << "| " << std::setw(temperature_width - 1) << "Temp (C)"
-            << "| " << std::setw(fault_width - 1) << "Fault" << "|\n"
+            << "|" << center_cell("Joint", joint_width)
+            << "|" << center_cell("Position (rad)", position_width)
+            << "|" << center_cell("Velocity (rad/s)", velocity_width)
+            << "|" << center_cell("Effort", effort_width)
+            << "|" << center_cell("Temp (C)", temperature_width)
+            << "|" << center_cell("Fault", fault_width) << "|\n"
             << divider;
   for (std::size_t i = 0; i < kMotorCount; ++i) {
     const std::string joint = "joint" + std::to_string(i + 1);
     if (!seen[i]) {
-      std::cout << "| " << std::left << std::setw(joint_width - 1) << joint
-                << "| " << std::setw(position_width - 1) << "no feedback"
-                << "| " << std::setw(velocity_width - 1) << ""
-                << "| " << std::setw(effort_width - 1) << ""
-                << "| " << std::setw(temperature_width - 1) << ""
-                << "| " << std::setw(fault_width - 1) << "" << "|\n";
+      std::cout << "|" << center_cell(joint, joint_width)
+                << "|" << center_cell("no feedback", position_width)
+                << "|" << center_cell("", velocity_width)
+                << "|" << center_cell("", effort_width)
+                << "|" << center_cell("", temperature_width)
+                << "|" << center_cell("", fault_width) << "|\n";
       continue;
     }
     const auto &state = states[i];
@@ -57,13 +66,12 @@ void print_states(
     effort << std::fixed << std::setprecision(3) << state.effort;
     temperature << std::fixed << std::setprecision(1) << state.temperature;
     fault << "0x" << std::hex << static_cast<unsigned int>(state.fault);
-    std::cout << "| " << std::left << std::setw(joint_width - 1) << joint
-              << "| " << std::right << std::setw(position_width - 1) << position.str()
-              << "| " << std::setw(velocity_width - 1) << velocity.str()
-              << "| " << std::setw(effort_width - 1) << effort.str()
-              << "| " << std::setw(temperature_width - 1) << temperature.str()
-              << "| " << std::left << std::setw(fault_width - 1) << fault.str()
-              << "|\n";
+    std::cout << "|" << center_cell(joint, joint_width)
+              << "|" << center_cell(position.str(), position_width)
+              << "|" << center_cell(velocity.str(), velocity_width)
+              << "|" << center_cell(effort.str(), effort_width)
+              << "|" << center_cell(temperature.str(), temperature_width)
+              << "|" << center_cell(fault.str(), fault_width) << "|\n";
   }
   std::cout << divider;
   std::cout << std::flush;
