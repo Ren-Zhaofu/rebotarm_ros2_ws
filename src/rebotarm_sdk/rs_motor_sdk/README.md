@@ -11,6 +11,20 @@ Read one six-axis feedback set without enabling the motors:
 ros2 run rs_motor_sdk rs_motor_read_state can0
 ```
 
+Continuously refresh the state table every 100 ms until `Ctrl+C`:
+
+```bash
+ros2 run rs_motor_sdk rs_motor_read_state can0 --watch 100
+```
+
+也可以直接运行工作区脚本：
+
+```bash
+scripts/motor/RS/motor_rs_read.sh
+scripts/motor/RS/motor_rs_read.sh --refresh-ms 200
+scripts/motor/RS/motor_rs_read.sh --once
+```
+
 The hardware plugin supplies the robot-specific mapping. For `model=rs`, the
 default configuration is motor IDs `0x01` through `0x06`, host ID `0xFD`,
 RS-06 on joints 1--3, and RS-00 on joints 4--6.
