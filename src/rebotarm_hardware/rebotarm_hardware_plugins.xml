@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<library path="rebotarm_hardware">
+  <class
+    name="rebotarm_hardware/RebotArmSystem"
+    type="rebotarm_hardware::RebotArmSystem"
+    base_class_type="hardware_interface::SystemInterface">
+    <description>Offline mock ros2_control system for the six-axis reBotArm.</description>
+  </class>
+</library>
