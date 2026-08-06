@@ -12,5 +12,5 @@ cd "${WORKSPACE_DIR}"
 colcon build --symlink-install "$@"
 
 echo
-echo "编译完成。使用下面的命令加载工作空间环境："
+echo "Build completed. Source the workspace environment with:"
 echo "source ${WORKSPACE_DIR}/install/setup.bash"
