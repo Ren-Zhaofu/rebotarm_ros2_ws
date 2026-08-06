@@ -23,27 +23,49 @@ void print_states(
   if (clear_screen) {
     std::cout << "\033[H\033[J";
   }
-  std::cout << std::left << std::setw(8) << "joint" << std::right
-            << std::setw(15) << "position(rad)" << std::setw(18)
-            << "velocity(rad/s)" << std::setw(9) << "effort"
-            << std::setw(9) << "temp(C)" << std::setw(8) << "fault"
-            << '\n';
+  constexpr int joint_width = 8;
+  constexpr int position_width = 15;
+  constexpr int velocity_width = 18;
+  constexpr int effort_width = 10;
+  constexpr int temperature_width = 10;
+  constexpr int fault_width = 8;
+  const std::string divider =
+      "+--------+---------------+------------------+----------+----------+--------+\n";
+  std::cout << divider
+            << "| " << std::left << std::setw(joint_width - 1) << "Joint"
+            << "| " << std::setw(position_width - 1) << "Position (rad)"
+            << "| " << std::setw(velocity_width - 1) << "Velocity (rad/s)"
+            << "| " << std::setw(effort_width - 1) << "Effort"
+            << "| " << std::setw(temperature_width - 1) << "Temp (C)"
+            << "| " << std::setw(fault_width - 1) << "Fault" << "|\n"
+            << divider;
   for (std::size_t i = 0; i < kMotorCount; ++i) {
+    const std::string joint = "joint" + std::to_string(i + 1);
     if (!seen[i]) {
-      std::cout << std::left << std::setw(8)
-                << ("joint" + std::to_string(i + 1)) << "no feedback\n";
+      std::cout << "| " << std::left << std::setw(joint_width - 1) << joint
+                << "| " << std::setw(position_width - 1) << "no feedback"
+                << "| " << std::setw(velocity_width - 1) << ""
+                << "| " << std::setw(effort_width - 1) << ""
+                << "| " << std::setw(temperature_width - 1) << ""
+                << "| " << std::setw(fault_width - 1) << "" << "|\n";
       continue;
     }
     const auto &state = states[i];
-    std::cout << std::left << std::setw(8)
-              << ("joint" + std::to_string(i + 1)) << std::right << std::fixed
-              << std::setprecision(6) << std::setw(15) << state.position
-              << std::setw(18) << state.velocity << std::setw(9)
-              << std::setprecision(3) << state.effort << std::setw(9)
-              << std::setprecision(1) << state.temperature << std::setw(3)
-              << "0x" << std::hex
-              << static_cast<unsigned int>(state.fault) << std::dec << '\n';
+    std::ostringstream position, velocity, effort, temperature, fault;
+    position << std::fixed << std::setprecision(6) << state.position;
+    velocity << std::fixed << std::setprecision(6) << state.velocity;
+    effort << std::fixed << std::setprecision(3) << state.effort;
+    temperature << std::fixed << std::setprecision(1) << state.temperature;
+    fault << "0x" << std::hex << static_cast<unsigned int>(state.fault);
+    std::cout << "| " << std::left << std::setw(joint_width - 1) << joint
+              << "| " << std::right << std::setw(position_width - 1) << position.str()
+              << "| " << std::setw(velocity_width - 1) << velocity.str()
+              << "| " << std::setw(effort_width - 1) << effort.str()
+              << "| " << std::setw(temperature_width - 1) << temperature.str()
+              << "| " << std::left << std::setw(fault_width - 1) << fault.str()
+              << "|\n";
   }
+  std::cout << divider;
   std::cout << std::flush;
 }
 
