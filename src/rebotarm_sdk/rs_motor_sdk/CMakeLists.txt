@@ -21,6 +21,8 @@ add_executable(rs_motor_read_state tools/rs_motor_read_state.cpp)
 target_link_libraries(rs_motor_read_state ${PROJECT_NAME})
 add_executable(rs_motor_set_zero tools/rs_motor_set_zero.cpp)
 target_link_libraries(rs_motor_set_zero ${PROJECT_NAME})
+add_executable(rs_motor_home tools/rs_motor_home.cpp)
+target_link_libraries(rs_motor_home ${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
@@ -30,6 +32,7 @@ install(TARGETS ${PROJECT_NAME}
 )
 install(TARGETS rs_motor_read_state DESTINATION lib/${PROJECT_NAME})
 install(TARGETS rs_motor_set_zero DESTINATION lib/${PROJECT_NAME})
+install(TARGETS rs_motor_home DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 
 if(BUILD_TESTING)

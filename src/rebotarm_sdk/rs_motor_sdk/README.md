@@ -35,6 +35,16 @@ scripts/motor/RS/motor_rs_zero.sh --joints joint1,joint3,joint6 --execute
 scripts/motor/RS/motor_rs_zero.sh --all --execute
 ```
 
+Move one, multiple, or all joints gradually to their calibrated zero position.
+The command enables and moves real motors, so it requires both `--execute` and
+an interactive `RS_HOME` confirmation. Selected motors are disabled on exit:
+
+```bash
+scripts/motor/RS/motor_rs_home.sh --joint joint3 --execute
+scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --execute
+scripts/motor/RS/motor_rs_home.sh --all --execute
+```
+
 The hardware plugin supplies the robot-specific mapping. For `model=rs`, the
 default configuration is motor IDs `0x01` through `0x06`, host ID `0xFD`,
 RS-06 on joints 1--3, and RS-00 on joints 4--6.
