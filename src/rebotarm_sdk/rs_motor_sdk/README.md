@@ -25,6 +25,16 @@ scripts/motor/RS/motor_rs_read.sh --refresh-ms 200
 scripts/motor/RS/motor_rs_read.sh --once
 ```
 
+Set the current position as zero for one, multiple, or all arm joints. This is
+a persistent calibration operation and requires both `--execute` and an
+interactive `RS_ZERO` confirmation:
+
+```bash
+scripts/motor/RS/motor_rs_zero.sh --joint joint3 --execute
+scripts/motor/RS/motor_rs_zero.sh --joints joint1,joint3,joint6 --execute
+scripts/motor/RS/motor_rs_zero.sh --all --execute
+```
+
 The hardware plugin supplies the robot-specific mapping. For `model=rs`, the
 default configuration is motor IDs `0x01` through `0x06`, host ID `0xFD`,
 RS-06 on joints 1--3, and RS-00 on joints 4--6.
