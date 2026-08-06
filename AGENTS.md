@@ -1,38 +1,38 @@
-# Repository Guidance
+# 仓库协作规范
 
-## Project scope
+## 项目范围
 
-- This repository is a ROS 2 Humble workspace.
-- Keep ROS packages under `src/` and workspace-wide helper scripts under `scripts/`.
-- Do not add generated files from `build/`, `install/`, or `log/` to Git.
-- Preserve unrelated user changes when working in a dirty worktree.
+- 本仓库是 ROS 2 Humble 工作空间。
+- ROS 功能包统一放在 `src/`，工作空间级辅助脚本统一放在 `scripts/`。
+- 不要将 `build/`、`install/` 或 `log/` 中的生成文件加入 Git。
+- 工作区存在未提交修改时，保留与当前任务无关的用户改动。
 
-## Build and verification
+## 编译与验证
 
-- Use `./scripts/build.sh` to build the complete workspace.
-- For a focused change, build only the affected package first:
-  `./scripts/build.sh --packages-select <package_name>`.
-- Run checks appropriate to the changed package before committing.
-- Report any check that could not be run and explain why.
+- 使用 `./scripts/build.sh` 编译整个工作空间。
+- 对局部修改，优先只编译受影响的功能包：
+  `./scripts/build.sh --packages-select <package_name>`
+- 提交前执行适合被修改功能包的检查。
+- 如果有检查无法执行，需要说明具体原因。
 
-## Change boundaries
+## 修改边界
 
-- Keep each change focused on one topic.
-- Do not mix robot description, control, planning, and hardware-driver concerns.
-- Put module-specific guidance in an `AGENTS.md` inside that package.
-- Do not delete, overwrite, or reformat unrelated files.
+- 每次修改只聚焦一个主题。
+- 不要混合机器人描述、控制、运动规划和硬件驱动的职责。
+- 模块专属规则放在对应功能包内的 `AGENTS.md` 中。
+- 不要删除、覆盖或格式化与当前任务无关的文件。
 
-## Git conventions
+## Git 规范
 
-- Use commit messages in the format `type(module): Chinese change summary`.
-- Common types are `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
-- Each commit must contain only one topic.
-- Do not commit build products, logs, caches, secrets, or machine-local configuration.
-- Do not push commits unless the user explicitly requests it.
+- 提交信息统一使用 `类型(模块): 中文修改说明`。
+- 常用类型包括 `feat`、`fix`、`refactor`、`docs`、`test`、`build` 和 `chore`。
+- 一次提交只包含一个主题。
+- 不要提交编译产物、日志、缓存、密钥或本机专用配置。
+- 除非用户明确要求，否则不要推送提交。
 
-## ROS conventions
+## ROS 规范
 
-- Declare package dependencies in `package.xml` and the package build configuration.
-- Prefer package-relative resource paths over machine-specific absolute paths.
-- Keep launch files, configuration, URDF/Xacro, and source code in their conventional package directories.
-- Treat CAD-exported dynamics, limits, and collision geometry as unverified until checked against hardware specifications.
+- 在 `package.xml` 和功能包的构建配置中声明依赖。
+- 资源路径优先使用相对于功能包的路径，不要使用本机绝对路径。
+- 启动文件、配置、URDF/Xacro 和源代码应放在功能包的标准目录中。
+- CAD 导出的动力学参数、限制和碰撞几何，在依据硬件规格核验前均视为未验证数据。
