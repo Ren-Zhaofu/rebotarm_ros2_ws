@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rebotarm_rs">
+  <xacro:include filename="$(find rebotarm_description)/urdf/rs/urdf/rebotarm_rs.urdf"/>
+  <link name="base_footprint"/>
+  <joint name="base_fixed_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+  </joint>
+  <link name="gripper_tcp"/>
+  <joint name="gripper_tcp_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <parent link="gripper_end"/>
+    <child link="gripper_tcp"/>
+  </joint>
+</robot>
