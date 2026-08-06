@@ -46,6 +46,15 @@ scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --execute
 scripts/motor/RS/motor_rs_home.sh --all --execute
 ```
 
+Disable selected motors and clear their active fault state, then verify that
+feedback reports fault code zero:
+
+```bash
+scripts/motor/RS/motor_rs_clear_fault.sh --joint joint3 --execute
+scripts/motor/RS/motor_rs_clear_fault.sh --joints joint1,joint3,joint6 --execute
+scripts/motor/RS/motor_rs_clear_fault.sh --all --execute
+```
+
 The hardware plugin supplies the robot-specific mapping. For `model=rs`, the
 default configuration is motor IDs `0x01` through `0x06`, host ID `0xFD`,
 RS-06 on joints 1--3, and RS-00 on joints 4--6.
