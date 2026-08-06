@@ -54,6 +54,14 @@ struct MitCommand {
   double feedforward_effort{0.0};
 };
 
+struct TrajectorySample {
+  double position{0.0};
+  double velocity{0.0};
+};
+
+TrajectorySample minimum_jerk(double start, double goal, double duration,
+                              double elapsed);
+
 struct MotorState {
   std::uint8_t motor_id{0};
   std::uint8_t fault{0};
@@ -73,8 +81,7 @@ public:
   static CanFrame set_zero(const MotorConfig &motor);
   static CanFrame active_report(const MotorConfig &motor, bool enabled);
   static CanFrame mit(const MotorConfig &motor, const MitCommand &command);
-  static CanFrame read_parameter(const MotorConfig &motor,
-                                 std::uint16_t index);
+  static CanFrame read_parameter(const MotorConfig &motor, std::uint16_t index);
   static CanFrame write_parameter_f32(const MotorConfig &motor,
                                       std::uint16_t index, float value);
   static std::optional<MotorState> decode_feedback(const MotorConfig &motor,

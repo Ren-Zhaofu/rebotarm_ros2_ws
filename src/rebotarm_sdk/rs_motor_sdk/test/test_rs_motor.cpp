@@ -1,7 +1,7 @@
 #include <cmath>
 
-#include "gtest/gtest.h"
 #include "rs_motor_sdk/rs_motor.hpp"
+#include "gtest/gtest.h"
 
 namespace {
 
@@ -26,13 +26,13 @@ TEST(RsProtocolTest, BuildsExtendedStatusCommands) {
 TEST(RsProtocolTest, BuildsActiveReportCommand) {
   const auto frame = Protocol::active_report(kMotor, true);
   EXPECT_EQ(frame.id, 0x1800FD01U);
-  EXPECT_EQ(frame.data,
-            (std::array<std::uint8_t, 8>{1, 2, 3, 4, 5, 6, 1, 0}));
+  EXPECT_EQ(frame.data, (std::array<std::uint8_t, 8>{1, 2, 3, 4, 5, 6, 1, 0}));
 }
 
 TEST(RsProtocolTest, EncodesNeutralMitCommand) {
   const auto frame = Protocol::mit(kMotor, {});
-  EXPECT_EQ(Protocol::communication_type(frame), CommunicationType::kMitControl);
+  EXPECT_EQ(Protocol::communication_type(frame),
+            CommunicationType::kMitControl);
   EXPECT_EQ(frame.id, 0x017FFF01U);
   EXPECT_EQ(frame.data[0], 0x7F);
   EXPECT_EQ(frame.data[1], 0xFF);
@@ -79,6 +79,29 @@ TEST(RsProtocolTest, DecodesPeriodicActiveReport) {
   const auto state = Protocol::decode_feedback(kMotor, frame);
   ASSERT_TRUE(state.has_value());
   EXPECT_EQ(state->fault, 0U);
+}
+
+TEST(RsTrajectoryTest, MinimumJerkHasSmoothEndpointsAndMidpoint) {
+  const auto start = rs_motor_sdk::minimum_jerk(1.0, 0.0, 10.0, 0.0);
+  EXPECT_DOUBLE_EQ(start.position, 1.0);
+  EXPECT_DOUBLE_EQ(start.velocity, 0.0);
+
+  const auto midpoint = rs_motor_sdk::minimum_jerk(1.0, 0.0, 10.0, 5.0);
+  EXPECT_DOUBLE_EQ(midpoint.position, 0.5);
+  EXPECT_NEAR(midpoint.velocity, -0.1875, 1e-12);
+
+  const auto end = rs_motor_sdk::minimum_jerk(1.0, 0.0, 10.0, 10.0);
+  EXPECT_DOUBLE_EQ(end.position, 0.0);
+  EXPECT_DOUBLE_EQ(end.velocity, 0.0);
+}
+
+TEST(RsTrajectoryTest, MinimumJerkClampsTimeAndRejectsInvalidDuration) {
+  EXPECT_DOUBLE_EQ(rs_motor_sdk::minimum_jerk(1.0, 0.0, 10.0, -1.0).position,
+                   1.0);
+  EXPECT_DOUBLE_EQ(rs_motor_sdk::minimum_jerk(1.0, 0.0, 10.0, 11.0).position,
+                   0.0);
+  EXPECT_THROW(rs_motor_sdk::minimum_jerk(0.0, 1.0, 0.0, 0.0),
+               std::invalid_argument);
 }
 
 } // namespace

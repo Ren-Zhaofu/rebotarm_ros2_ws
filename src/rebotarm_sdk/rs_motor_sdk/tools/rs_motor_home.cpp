@@ -15,7 +15,7 @@
 namespace {
 constexpr std::size_t kCount = 6;
 constexpr auto kPeriod = std::chrono::milliseconds(20);
-constexpr double kMaxVelocity = 0.25;
+constexpr double kMaxVelocity = 0.10;
 constexpr double kMinDuration = 2.0;
 constexpr double kPositionTolerance = 0.05;
 using Clock = std::chrono::steady_clock;
@@ -129,20 +129,24 @@ int main(int argc, char **argv) {
     start[i] = state[i].position;
     max_distance = std::max(max_distance, std::abs(start[i]));
   }
-  const double duration = std::max(kMinDuration, max_distance / kMaxVelocity);
-  std::cout << "Homing duration: " << duration << " s (limit " << kMaxVelocity
-            << " rad/s)\n";
+  // With a minimum-jerk blend, T=2*d/v keeps peak speed at 0.9375*v.
+  const double duration =
+      std::max(kMinDuration, 2.0 * max_distance / kMaxVelocity);
+  std::cout << "Minimum-jerk homing duration: " << duration
+            << " s (speed setting " << kMaxVelocity << " rad/s)\n";
   const auto begin = Clock::now();
   std::array<Clock::time_point, kCount> last_feedback{};
   for (auto i : sel)
     last_feedback[i] = begin;
   bool ok = true;
   while (!stop_requested.load()) {
-    const double t = std::min(
-        1.0,
-        std::chrono::duration<double>(Clock::now() - begin).count() / duration);
+    const double elapsed =
+        std::chrono::duration<double>(Clock::now() - begin).count();
     for (auto i : sel) {
-      if (!bus.send_mit(i, {start[i] * (1.0 - t), 0.0, kp[i], kd[i], 0.0})) {
+      const auto target =
+          rs_motor_sdk::minimum_jerk(start[i], 0.0, duration, elapsed);
+      if (!bus.send_mit(
+              i, {target.position, target.velocity, kp[i], kd[i], 0.0})) {
         std::cerr << "joint" << i + 1 << " command: " << bus.last_error()
                   << '\n';
         ok = false;
@@ -173,7 +177,7 @@ int main(int argc, char **argv) {
         break;
       }
     }
-    if (!ok || t >= 1.0)
+    if (!ok || elapsed >= duration)
       break;
     std::this_thread::sleep_for(kPeriod);
   }

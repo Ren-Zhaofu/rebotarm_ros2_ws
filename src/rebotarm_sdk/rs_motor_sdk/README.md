@@ -35,7 +35,8 @@ scripts/motor/RS/motor_rs_zero.sh --joints joint1,joint3,joint6 --execute
 scripts/motor/RS/motor_rs_zero.sh --all --execute
 ```
 
-Move one, multiple, or all joints gradually to their calibrated zero position.
+Move one, multiple, or all joints to their calibrated zero position with a
+minimum-jerk trajectory and a conservative `0.10 rad/s` speed setting.
 The command enables and moves real motors, so it requires both `--execute` and
 an interactive `RS_HOME` confirmation. Selected motors are disabled on exit:
 

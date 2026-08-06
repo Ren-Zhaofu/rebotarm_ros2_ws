@@ -72,6 +72,27 @@ template <typename T> void write_little(T value, std::uint8_t *output) {
 
 } // namespace
 
+TrajectorySample minimum_jerk(double start, double goal, double duration,
+                              double elapsed) {
+  validate_finite(start, "trajectory start");
+  validate_finite(goal, "trajectory goal");
+  validate_finite(duration, "trajectory duration");
+  validate_finite(elapsed, "trajectory elapsed time");
+  if (duration <= 0.0) {
+    throw std::invalid_argument("trajectory duration must be positive");
+  }
+
+  const double s = std::clamp(elapsed / duration, 0.0, 1.0);
+  const double s2 = s * s;
+  const double s3 = s2 * s;
+  const double s4 = s3 * s;
+  const double s5 = s4 * s;
+  const double blend = 10.0 * s3 - 15.0 * s4 + 6.0 * s5;
+  const double blend_rate = (30.0 * s2 - 60.0 * s3 + 30.0 * s4) / duration;
+  const double distance = goal - start;
+  return {start + distance * blend, distance * blend_rate};
+}
+
 Limits Protocol::limits(MotorModel model) {
   // RobStride MIT protocol ranges. Mechanical joint limits remain enforced by
   // ros2_control and are intentionally narrower than these wire ranges.
@@ -118,8 +139,8 @@ CanFrame Protocol::active_report(const MotorConfig &motor, bool enabled) {
 
 CanFrame Protocol::mit(const MotorConfig &motor, const MitCommand &value) {
   const auto range = limits(motor.model);
-  const auto effort = encode(value.feedforward_effort, -range.effort,
-                             range.effort);
+  const auto effort =
+      encode(value.feedforward_effort, -range.effort, range.effort);
   auto frame = command(motor, CommunicationType::kMitControl, effort);
   const std::array<std::uint16_t, 4> fields{
       encode(value.position, -range.position, range.position),
@@ -154,8 +175,8 @@ CommunicationType Protocol::communication_type(const CanFrame &frame) {
   return static_cast<CommunicationType>((frame.id >> 24) & 0x1F);
 }
 
-std::optional<MotorState>
-Protocol::decode_feedback(const MotorConfig &motor, const CanFrame &frame) {
+std::optional<MotorState> Protocol::decode_feedback(const MotorConfig &motor,
+                                                    const CanFrame &frame) {
   const auto type = communication_type(frame);
   if (!frame.extended || frame.size != 8 ||
       (type != CommunicationType::kFeedback &&
@@ -249,9 +270,11 @@ bool SocketCan::receive(CanFrame &frame, std::chrono::microseconds timeout) {
     last_error_ = "SocketCAN interface is not open";
     return false;
   }
-  struct pollfd descriptor { fd_, POLLIN, 0 };
-  const auto milliseconds = std::max<long long>(
-      1, (timeout.count() + 999) / 1000);
+  struct pollfd descriptor {
+    fd_, POLLIN, 0
+  };
+  const auto milliseconds =
+      std::max<long long>(1, (timeout.count() + 999) / 1000);
   const int result = ::poll(&descriptor, 1, static_cast<int>(milliseconds));
   if (result <= 0) {
     if (result < 0) {
@@ -266,7 +289,8 @@ bool SocketCan::receive(CanFrame &frame, std::chrono::microseconds timeout) {
     set_error("read CAN frame");
     return false;
   }
-  frame.id = raw.can_id & (raw.can_id & CAN_EFF_FLAG ? CAN_EFF_MASK : CAN_SFF_MASK);
+  frame.id =
+      raw.can_id & (raw.can_id & CAN_EFF_FLAG ? CAN_EFF_MASK : CAN_SFF_MASK);
   frame.extended = (raw.can_id & CAN_EFF_FLAG) != 0;
   frame.size = raw.can_dlc;
   std::copy_n(raw.data, raw.can_dlc, frame.data.begin());
@@ -316,7 +340,9 @@ bool MotorBus::send(const CanFrame &frame) {
 }
 
 bool MotorBus::ping(std::size_t i) { return send(Protocol::ping(motor(i))); }
-bool MotorBus::enable(std::size_t i) { return send(Protocol::enable(motor(i))); }
+bool MotorBus::enable(std::size_t i) {
+  return send(Protocol::enable(motor(i)));
+}
 bool MotorBus::disable(std::size_t i, bool clear) {
   return send(Protocol::disable(motor(i), clear));
 }
