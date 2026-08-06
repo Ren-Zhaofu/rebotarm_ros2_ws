@@ -8,13 +8,17 @@
         <param name="transport">${transport}</param>
         <param name="model">${model}</param>
         <xacro:if value="${transport == 'socketcan'}">
-          <!-- Real-hardware settings are deliberately explicit and DM-only. -->
+          <!-- Real-hardware settings are deliberately explicit. -->
           <param name="can_interface">${can_interface}</param>
           <param name="allow_motor_enable">${allow_motor_enable}</param>
           <param name="motor_enable_mask">${motor_enable_mask}</param>
           <param name="motor_ids">0x01,0x02,0x03,0x04,0x05,0x06</param>
-          <param name="feedback_ids">0x11,0x12,0x13,0x14,0x15,0x16</param>
-          <param name="motor_models">dm4340_48v,dm4340_48v,dm4340_48v,dm4310,dm4310,dm4310</param>
+          <param name="feedback_ids">${'0x11,0x12,0x13,0x14,0x15,0x16' if model == 'dm' else '0xFD,0xFD,0xFD,0xFD,0xFD,0xFD'}</param>
+          <param name="motor_models">${'dm4340_48v,dm4340_48v,dm4340_48v,dm4310,dm4310,dm4310' if model == 'dm' else 'rs-06,rs-06,rs-06,rs-00,rs-00,rs-00'}</param>
+          <xacro:if value="${model == 'rs'}">
+            <param name="mit_kp">50,150,150,50,50,50</param>
+            <param name="mit_kd">3,10,10,5,4,4</param>
+          </xacro:if>
           <param name="joint_directions">1,1,1,1,1,1</param>
           <param name="joint_offsets">0,0,0,0,0,0</param>
           <!-- Maximum velocity field sent with mode-2 position targets. -->

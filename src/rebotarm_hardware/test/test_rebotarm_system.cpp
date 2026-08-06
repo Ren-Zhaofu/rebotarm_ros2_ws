@@ -73,6 +73,25 @@ void add_socketcan_parameters(hardware_interface::HardwareInfo &info,
   info.hardware_parameters["max_command_step"] = "0.05";
 }
 
+void add_rs_socketcan_parameters(hardware_interface::HardwareInfo &info) {
+  info.hardware_parameters["transport"] = "socketcan";
+  info.hardware_parameters["model"] = "rs";
+  info.hardware_parameters["can_interface"] = "vcan0";
+  info.hardware_parameters["allow_motor_enable"] = "false";
+  info.hardware_parameters["motor_enable_mask"] = "0,0,0,0,0,0";
+  info.hardware_parameters["motor_ids"] = "0x01,0x02,0x03,0x04,0x05,0x06";
+  info.hardware_parameters["feedback_ids"] = "0xFD,0xFD,0xFD,0xFD,0xFD,0xFD";
+  info.hardware_parameters["motor_models"] =
+      "rs-06,rs-06,rs-06,rs-00,rs-00,rs-00";
+  info.hardware_parameters["mit_kp"] = "50,150,150,50,50,50";
+  info.hardware_parameters["mit_kd"] = "3,10,10,5,4,4";
+  info.hardware_parameters["joint_directions"] = "1,1,1,1,1,1";
+  info.hardware_parameters["joint_offsets"] = "0,0,0,0,0,0";
+  info.hardware_parameters["position_velocity_limits"] = "1,1,1,1,1,1";
+  info.hardware_parameters["feedback_timeout_ms"] = "100";
+  info.hardware_parameters["max_command_step"] = "0.05";
+}
+
 TEST(RebotArmSystemTest, InitializesAndExportsExpectedInterfaces) {
   rebotarm_hardware::RebotArmSystem system;
   EXPECT_EQ(system.on_init(make_hardware_info()), CallbackReturn::SUCCESS);
@@ -100,6 +119,13 @@ TEST(RebotArmSystemTest, RejectsInvalidConfiguration) {
 TEST(RebotArmSystemTest, SupportsReadOnlySocketCanWithoutEnableGate) {
   auto info = make_hardware_info();
   add_socketcan_parameters(info, false);
+  rebotarm_hardware::RebotArmSystem system;
+  EXPECT_EQ(system.on_init(info), CallbackReturn::SUCCESS);
+}
+
+TEST(RebotArmSystemTest, SupportsRobStrideSocketCanConfiguration) {
+  auto info = make_hardware_info();
+  add_rs_socketcan_parameters(info);
   rebotarm_hardware::RebotArmSystem system;
   EXPECT_EQ(system.on_init(info), CallbackReturn::SUCCESS);
 }

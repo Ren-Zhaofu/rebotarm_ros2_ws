@@ -15,6 +15,7 @@ find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(rebotarm_dm_motor_sdk REQUIRED)
+find_package(rs_motor_sdk REQUIRED)
 
 add_library(${PROJECT_NAME} SHARED
   src/rebotarm_system.cpp
@@ -29,6 +30,7 @@ ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   rclcpp_lifecycle
   rebotarm_dm_motor_sdk
+  rs_motor_sdk
 )
 
 pluginlib_export_plugin_description_file(
@@ -73,5 +75,6 @@ ament_export_dependencies(
   rclcpp
   rclcpp_lifecycle
   rebotarm_dm_motor_sdk
+  rs_motor_sdk
 )
 ament_package()

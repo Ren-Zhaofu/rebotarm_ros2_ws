@@ -13,6 +13,7 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rebotarm_dm_motor_sdk/dm_motor.hpp"
+#include "rs_motor_sdk/rs_motor.hpp"
 
 namespace rebotarm_hardware {
 
@@ -69,6 +70,9 @@ private:
   std::array<std::uint16_t, kJointCount> feedback_ids_{};
   std::array<rebotarm_dm_motor_sdk::MotorModel, kJointCount> motor_models_{};
   std::array<rebotarm_dm_motor_sdk::Limits, kJointCount> motor_limits_{};
+  std::array<rs_motor_sdk::MotorModel, kJointCount> rs_motor_models_{};
+  std::array<double, kJointCount> rs_mit_kp_{};
+  std::array<double, kJointCount> rs_mit_kd_{};
   std::array<std::chrono::steady_clock::time_point, kJointCount>
       last_feedback_{};
   std::array<bool, kJointCount> feedback_seen_{};
@@ -76,6 +80,8 @@ private:
   std::array<bool, kJointCount> motor_enabled_{};
   std::array<std::uint8_t, kJointCount> feedback_states_{};
   std::unique_ptr<rebotarm_dm_motor_sdk::MotorBus> bus_;
+  std::unique_ptr<rs_motor_sdk::MotorBus> rs_bus_;
+  std::string model_{"dm"};
   std::string transport_{"mock"};
   std::string can_interface_{"can0"};
   std::chrono::milliseconds feedback_timeout_{100};

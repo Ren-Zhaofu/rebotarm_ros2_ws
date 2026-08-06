@@ -77,6 +77,16 @@ MotorModel parse_motor_model(const std::string &value) {
   throw std::invalid_argument("unsupported reBotArm DM motor model: " + value);
 }
 
+rs_motor_sdk::MotorModel parse_rs_motor_model(const std::string &value) {
+  if (value == "rs-00") {
+    return rs_motor_sdk::MotorModel::kRs00;
+  }
+  if (value == "rs-06") {
+    return rs_motor_sdk::MotorModel::kRs06;
+  }
+  throw std::invalid_argument("unsupported reBotArm RS motor model: " + value);
+}
+
 const char *register_name(Register reg) {
   switch (reg) {
   case Register::kControlMode:
@@ -144,11 +154,12 @@ RebotArmSystem::on_init(const hardware_interface::HardwareInfo &info) {
 
 bool RebotArmSystem::configure_socketcan() {
   const auto model = info_.hardware_parameters.find("model");
-  if (model == info_.hardware_parameters.end() || model->second != "dm") {
-    RCLCPP_ERROR(kLogger,
-                 "SocketCAN hardware currently supports only model=dm");
+  if (model == info_.hardware_parameters.end() ||
+      (model->second != "dm" && model->second != "rs")) {
+    RCLCPP_ERROR(kLogger, "SocketCAN model must be 'dm' or 'rs'");
     return false;
   }
+  model_ = model->second;
 
   const auto get = [this](const std::string &name) -> const std::string * {
     const auto found = info_.hardware_parameters.find(name);
@@ -185,9 +196,13 @@ bool RebotArmSystem::configure_socketcan() {
   const auto models = get("motor_models");
   const auto enable_mask = get("motor_enable_mask");
   std::array<std::uint8_t, kJointCount> enable_mask_values{};
+  const bool valid_models =
+      models != nullptr &&
+      (model_ == "dm"
+           ? parse_list(*models, motor_models_, parse_motor_model)
+           : parse_list(*models, rs_motor_models_, parse_rs_motor_model));
   if (!parse_id_array("motor_ids", motor_ids_) ||
-      !parse_id_array("feedback_ids", feedback_ids_) || models == nullptr ||
-      !parse_list(*models, motor_models_, parse_motor_model) ||
+      !parse_id_array("feedback_ids", feedback_ids_) || !valid_models ||
       !parse_double_array("joint_directions", direction_) ||
       !parse_double_array("joint_offsets", offset_) ||
       !parse_double_array("position_velocity_limits",
@@ -209,7 +224,12 @@ bool RebotArmSystem::configure_socketcan() {
 
   for (std::size_t i = 0; i < kJointCount; ++i) {
     enable_mask_[i] = allow_motor_enable_ && enable_mask_values[i] == 1;
-    motor_limits_[i] = Protocol::limits(motor_models_[i]);
+    if (model_ == "dm") {
+      motor_limits_[i] = Protocol::limits(motor_models_[i]);
+    } else {
+      const auto limits = rs_motor_sdk::Protocol::limits(rs_motor_models_[i]);
+      motor_limits_[i] = {limits.position, limits.velocity, limits.effort};
+    }
     if ((direction_[i] != 1.0 && direction_[i] != -1.0) ||
         !std::isfinite(offset_[i]) ||
         !std::isfinite(position_velocity_limits_[i]) ||
@@ -218,6 +238,12 @@ bool RebotArmSystem::configure_socketcan() {
       RCLCPP_ERROR(kLogger, "Unsafe SocketCAN parameter for joint%zu", i + 1);
       return false;
     }
+  }
+  if (model_ == "rs" &&
+      (!parse_double_array("mit_kp", rs_mit_kp_) ||
+       !parse_double_array("mit_kd", rs_mit_kd_))) {
+    RCLCPP_ERROR(kLogger, "RS hardware requires six-value mit_kp and mit_kd");
+    return false;
   }
   if (allow_motor_enable_ &&
       std::none_of(enable_mask_.begin(), enable_mask_.end(),
@@ -248,10 +274,20 @@ bool RebotArmSystem::configure_socketcan() {
   }
 
   try {
-    bus_ = std::make_unique<rebotarm_dm_motor_sdk::MotorBus>();
-    for (std::size_t i = 0; i < kJointCount; ++i) {
-      bus_->add_motor({info_.joints[i].name, motor_ids_[i], feedback_ids_[i],
-                       motor_models_[i]});
+    if (model_ == "dm") {
+      bus_ = std::make_unique<rebotarm_dm_motor_sdk::MotorBus>();
+      for (std::size_t i = 0; i < kJointCount; ++i) {
+        bus_->add_motor({info_.joints[i].name, motor_ids_[i], feedback_ids_[i],
+                         motor_models_[i]});
+      }
+    } else {
+      rs_bus_ = std::make_unique<rs_motor_sdk::MotorBus>();
+      for (std::size_t i = 0; i < kJointCount; ++i) {
+        rs_bus_->add_motor({info_.joints[i].name,
+                            static_cast<std::uint8_t>(motor_ids_[i]),
+                            static_cast<std::uint8_t>(feedback_ids_[i]),
+                            rs_motor_models_[i]});
+      }
     }
   } catch (const std::exception &exception) {
     RCLCPP_ERROR(kLogger, "Invalid DM motor configuration: %s",
@@ -351,6 +387,9 @@ RebotArmSystem::export_command_interfaces() {
 }
 
 bool RebotArmSystem::verify_motor_parameters() {
+  if (model_ == "rs") {
+    return true;
+  }
   const auto read = [this](std::size_t index, Register reg,
                            ParameterResponse &response) {
     if (!bus_->read_parameter(index, reg)) {
@@ -406,9 +445,13 @@ bool RebotArmSystem::verify_motor_parameters() {
 
 bool RebotArmSystem::request_feedback() {
   for (std::size_t i = 0; i < kJointCount; ++i) {
-    if (!bus_->request_state(i)) {
+    const bool sent = model_ == "dm"
+                          ? bus_->request_state(i)
+                          : rs_bus_->send_mit(i, rs_motor_sdk::MitCommand{});
+    if (!sent) {
       RCLCPP_ERROR(kLogger, "Feedback request failed for joint%zu: %s", i + 1,
-                   bus_->last_error().c_str());
+                   model_ == "dm" ? bus_->last_error().c_str()
+                                  : rs_bus_->last_error().c_str());
       return false;
     }
   }
@@ -416,6 +459,25 @@ bool RebotArmSystem::request_feedback() {
 }
 
 bool RebotArmSystem::receive_one_feedback(std::chrono::microseconds timeout) {
+  if (model_ == "rs") {
+    rs_motor_sdk::MotorState state;
+    std::size_t index = 0;
+    if (!rs_bus_->receive_state(state, index, timeout)) {
+      return false;
+    }
+    if (index >= kJointCount || state.motor_id != motor_ids_[index] ||
+        state.fault != 0) {
+      RCLCPP_ERROR(kLogger, "Invalid RS feedback on joint%zu", index + 1);
+      return false;
+    }
+    position_states_[index] = direction_[index] * state.position + offset_[index];
+    velocity_states_[index] = direction_[index] * state.velocity;
+    effort_states_[index] = direction_[index] * state.effort;
+    feedback_seen_[index] = true;
+    feedback_states_[index] = state.mode;
+    last_feedback_[index] = std::chrono::steady_clock::now();
+    return true;
+  }
   MotorState state;
   std::size_t index = 0;
   if (!bus_->receive_state(state, index, timeout)) {
@@ -461,7 +523,7 @@ bool RebotArmSystem::await_feedback(bool require_enabled) {
     }
     bool complete = std::all_of(feedback_seen_.begin(), feedback_seen_.end(),
                                 [](bool seen) { return seen; });
-    if (complete && require_enabled) {
+    if (complete && require_enabled && model_ == "dm") {
       for (std::size_t i = 0; i < kJointCount; ++i) {
         const std::uint8_t expected = motor_enabled_[i] ? 1 : 0;
         complete = complete && feedback_states_[i] == expected;
@@ -472,7 +534,8 @@ bool RebotArmSystem::await_feedback(bool require_enabled) {
     }
   }
   RCLCPP_ERROR(kLogger,
-               "Timed out waiting for a complete six-axis DM feedback set");
+               "Timed out waiting for a complete six-axis %s feedback set",
+               model_.c_str());
   return false;
 }
 
@@ -492,12 +555,19 @@ bool RebotArmSystem::send_position_velocity_commands() {
                    i + 1);
       return false;
     }
-    if (!bus_->send_position_velocity(
-            i, PositionVelocityCommand{
-                   static_cast<float>(motor_position),
-                   static_cast<float>(position_velocity_limits_[i])})) {
+    const bool sent = model_ == "dm"
+                          ? bus_->send_position_velocity(
+                                i, PositionVelocityCommand{
+                                       static_cast<float>(motor_position),
+                                       static_cast<float>(position_velocity_limits_[i])})
+                          : rs_bus_->send_mit(
+                                i, rs_motor_sdk::MitCommand{
+                                       motor_position, 0.0, rs_mit_kp_[i],
+                                       rs_mit_kd_[i], 0.0});
+    if (!sent) {
       RCLCPP_ERROR(kLogger, "Position-velocity command failed for joint%zu: %s",
-                   i + 1, bus_->last_error().c_str());
+                   i + 1, model_ == "dm" ? bus_->last_error().c_str()
+                                          : rs_bus_->last_error().c_str());
       return false;
     }
     last_sent_commands_[i] = joint_target;
@@ -508,12 +578,15 @@ bool RebotArmSystem::send_position_velocity_commands() {
 RebotArmSystem::CallbackReturn
 RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
   if (transport_ == "socketcan") {
-    if (!bus_->connect(can_interface_)) {
-      RCLCPP_ERROR(kLogger, "%s", bus_->last_error().c_str());
+    const bool connected = model_ == "dm" ? bus_->connect(can_interface_)
+                                           : rs_bus_->connect(can_interface_);
+    if (!connected) {
+      RCLCPP_ERROR(kLogger, "%s", model_ == "dm" ? bus_->last_error().c_str()
+                                                   : rs_bus_->last_error().c_str());
       return CallbackReturn::ERROR;
     }
     if (!verify_motor_parameters()) {
-      bus_->disconnect();
+      model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
       return CallbackReturn::ERROR;
     }
 
@@ -521,7 +594,7 @@ RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
     if (!request_feedback() || !await_feedback(false)) {
       RCLCPP_ERROR(kLogger,
                    "Not all six DM motors responded; motors remain disabled");
-      bus_->disconnect();
+      model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
       return CallbackReturn::ERROR;
     }
     position_commands_ = position_states_;
@@ -551,19 +624,19 @@ RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
               "[%.6f, %.6f]; verify motor zero, direction, and offset before "
               "enabling trajectory control",
               position_states_[i], i + 1, lower_limits_[i], upper_limits_[i]);
-          bus_->disconnect();
+          model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
           return CallbackReturn::ERROR;
         }
       }
     }
 
     if (!send_position_velocity_commands()) {
-      bus_->disconnect();
+      model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
       return CallbackReturn::ERROR;
     }
     feedback_seen_.fill(false);
     if (!request_feedback() || !await_feedback(false)) {
-      bus_->disconnect();
+      model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
       return CallbackReturn::ERROR;
     }
 
@@ -572,9 +645,11 @@ RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
       if (!enable_mask_[i]) {
         continue;
       }
-      if (!bus_->enable(i)) {
+      const bool enabled = model_ == "dm" ? bus_->enable(i) : rs_bus_->enable(i);
+      if (!enabled) {
         RCLCPP_ERROR(kLogger, "Motor enable failed for joint%zu: %s", i + 1,
-                     bus_->last_error().c_str());
+                     model_ == "dm" ? bus_->last_error().c_str()
+                                    : rs_bus_->last_error().c_str());
         motor_enabled_[i] = true;
         disable_motors();
         return CallbackReturn::ERROR;
@@ -584,15 +659,16 @@ RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
     if (!request_feedback() || !await_feedback(true) ||
         !send_position_velocity_commands()) {
       RCLCPP_ERROR(kLogger,
-                   "DM motor enable or initial hold acknowledgement failed");
+                   "%s motor enable or initial hold acknowledgement failed",
+                   model_.c_str());
       disable_motors();
       return CallbackReturn::ERROR;
     }
     RCLCPP_INFO(
         kLogger,
-        "Requested DM motor subset enabled in position-velocity mode on %s at "
+        "Requested %s motor subset enabled in position control on %s at "
         "its measured positions",
-        can_interface_.c_str());
+        model_.c_str(), can_interface_.c_str());
   }
 
   position_commands_ = position_states_;
@@ -611,7 +687,9 @@ RebotArmSystem::on_deactivate(const rclcpp_lifecycle::State &) {
 }
 
 void RebotArmSystem::disable_motors() {
-  if (!bus_ || !bus_->connected()) {
+  const bool connected = model_ == "dm" ? (bus_ && bus_->connected())
+                                         : (rs_bus_ && rs_bus_->connected());
+  if (!connected) {
     motor_enabled_.fill(false);
     return;
   }
@@ -622,16 +700,19 @@ void RebotArmSystem::disable_motors() {
         if (!motor_enabled_[i]) {
           continue;
         }
-        if (!bus_->disable(i)) {
+        const bool disabled = model_ == "dm" ? bus_->disable(i)
+                                              : rs_bus_->disable(i);
+        if (!disabled) {
           RCLCPP_ERROR(kLogger, "Motor disable command failed for joint%zu: %s",
-                       i + 1, bus_->last_error().c_str());
+                       i + 1, model_ == "dm" ? bus_->last_error().c_str()
+                                             : rs_bus_->last_error().c_str());
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
   }
   motor_enabled_.fill(false);
-  bus_->disconnect();
+  model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
 }
 
 hardware_interface::return_type RebotArmSystem::read(const rclcpp::Time &,
@@ -663,7 +744,8 @@ RebotArmSystem::write(const rclcpp::Time &, const rclcpp::Duration &) {
     if (!active_ ||
         std::none_of(motor_enabled_.begin(), motor_enabled_.end(),
                      [](bool enabled) { return enabled; }) ||
-        !bus_ || !bus_->connected()) {
+        (model_ == "dm" ? (!bus_ || !bus_->connected())
+                         : (!rs_bus_ || !rs_bus_->connected()))) {
       RCLCPP_ERROR(kLogger,
                    "Rejecting frozen hold while selected motors are not enabled");
       disable_motors();
@@ -713,7 +795,8 @@ RebotArmSystem::write(const rclcpp::Time &, const rclcpp::Duration &) {
     if (!active_ ||
         std::none_of(motor_enabled_.begin(), motor_enabled_.end(),
                      [](bool enabled) { return enabled; }) ||
-        !bus_ || !bus_->connected()) {
+        (model_ == "dm" ? (!bus_ || !bus_->connected())
+                         : (!rs_bus_ || !rs_bus_->connected()))) {
       RCLCPP_ERROR(kLogger,
                    "Rejecting command while real motors are not enabled");
       disable_motors();
