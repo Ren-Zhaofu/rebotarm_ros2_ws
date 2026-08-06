@@ -5,6 +5,12 @@ protocol used by the reBotArm RS configuration. It supports RS-00 and RS-06
 motors, MIT commands, enable/disable, software zero, parameter access, and
 feedback decoding.
 
+Read one six-axis feedback set without enabling the motors:
+
+```bash
+ros2 run rs_motor_sdk rs_motor_read_state can0
+```
+
 The hardware plugin supplies the robot-specific mapping. For `model=rs`, the
 default configuration is motor IDs `0x01` through `0x06`, host ID `0xFD`,
 RS-06 on joints 1--3, and RS-00 on joints 4--6.

@@ -21,6 +21,7 @@ enum class CommunicationType : std::uint8_t {
   kSetZero = 6,
   kReadParameter = 17,
   kWriteParameter = 18,
+  kActiveReport = 24,
 };
 
 struct Limits {
@@ -70,6 +71,7 @@ public:
   static CanFrame enable(const MotorConfig &motor);
   static CanFrame disable(const MotorConfig &motor, bool clear_fault = false);
   static CanFrame set_zero(const MotorConfig &motor);
+  static CanFrame active_report(const MotorConfig &motor, bool enabled);
   static CanFrame mit(const MotorConfig &motor, const MitCommand &command);
   static CanFrame read_parameter(const MotorConfig &motor,
                                  std::uint16_t index);
@@ -112,6 +114,7 @@ public:
   bool enable(std::size_t index);
   bool disable(std::size_t index, bool clear_fault = false);
   bool set_zero(std::size_t index);
+  bool set_active_report(std::size_t index, bool enabled);
   bool send_mit(std::size_t index, const MitCommand &command);
   bool read_parameter(std::size_t index, std::uint16_t parameter);
   bool write_parameter_f32(std::size_t index, std::uint16_t parameter,

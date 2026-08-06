@@ -108,6 +108,14 @@ CanFrame Protocol::set_zero(const MotorConfig &motor) {
   return frame;
 }
 
+CanFrame Protocol::active_report(const MotorConfig &motor, bool enabled) {
+  auto frame = command(motor, CommunicationType::kActiveReport,
+                       static_cast<std::uint16_t>(motor.host_id));
+  frame.data = {1, 2, 3, 4, 5, 6, static_cast<std::uint8_t>(enabled ? 1 : 0),
+                0};
+  return frame;
+}
+
 CanFrame Protocol::mit(const MotorConfig &motor, const MitCommand &value) {
   const auto range = limits(motor.model);
   const auto effort = encode(value.feedforward_effort, -range.effort,
@@ -148,8 +156,10 @@ CommunicationType Protocol::communication_type(const CanFrame &frame) {
 
 std::optional<MotorState>
 Protocol::decode_feedback(const MotorConfig &motor, const CanFrame &frame) {
+  const auto type = communication_type(frame);
   if (!frame.extended || frame.size != 8 ||
-      communication_type(frame) != CommunicationType::kFeedback ||
+      (type != CommunicationType::kFeedback &&
+       type != CommunicationType::kActiveReport) ||
       static_cast<std::uint8_t>(frame.id) != motor.host_id ||
       static_cast<std::uint8_t>(frame.id >> 8) != motor.motor_id) {
     return std::nullopt;
@@ -160,10 +170,10 @@ Protocol::decode_feedback(const MotorConfig &motor, const CanFrame &frame) {
         (static_cast<std::uint16_t>(frame.data[offset]) << 8) |
         frame.data[offset + 1]);
   };
-  const auto status = static_cast<std::uint16_t>((frame.id >> 16) & 0xFFFF);
+  const auto status = static_cast<std::uint8_t>((frame.id >> 16) & 0xFF);
   return MotorState{motor.motor_id,
-                    static_cast<std::uint8_t>((status >> 8) & 0x3F),
-                    static_cast<std::uint8_t>(status >> 14),
+                    static_cast<std::uint8_t>(status & 0x3F),
+                    static_cast<std::uint8_t>(status >> 6),
                     decode(word(0), -range.position, range.position),
                     decode(word(2), -range.velocity, range.velocity),
                     decode(word(4), -range.effort, range.effort),
@@ -312,6 +322,9 @@ bool MotorBus::disable(std::size_t i, bool clear) {
 }
 bool MotorBus::set_zero(std::size_t i) {
   return send(Protocol::set_zero(motor(i)));
+}
+bool MotorBus::set_active_report(std::size_t i, bool enabled) {
+  return send(Protocol::active_report(motor(i), enabled));
 }
 bool MotorBus::send_mit(std::size_t i, const MitCommand &value) {
   return send(Protocol::mit(motor(i), value));

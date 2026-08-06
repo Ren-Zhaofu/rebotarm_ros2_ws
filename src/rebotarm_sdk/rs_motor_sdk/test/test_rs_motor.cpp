@@ -23,6 +23,13 @@ TEST(RsProtocolTest, BuildsExtendedStatusCommands) {
   EXPECT_EQ(disable.data[0], 1U);
 }
 
+TEST(RsProtocolTest, BuildsActiveReportCommand) {
+  const auto frame = Protocol::active_report(kMotor, true);
+  EXPECT_EQ(frame.id, 0x1800FD01U);
+  EXPECT_EQ(frame.data,
+            (std::array<std::uint8_t, 8>{1, 2, 3, 4, 5, 6, 1, 0}));
+}
+
 TEST(RsProtocolTest, EncodesNeutralMitCommand) {
   const auto frame = Protocol::mit(kMotor, {});
   EXPECT_EQ(Protocol::communication_type(frame), CommunicationType::kMitControl);
@@ -56,10 +63,22 @@ TEST(RsProtocolTest, DecodesFeedback) {
   const auto state = Protocol::decode_feedback(kMotor, frame);
   ASSERT_TRUE(state.has_value());
   EXPECT_EQ(state->motor_id, 1U);
+  EXPECT_EQ(state->fault, 0U);
+  EXPECT_EQ(state->mode, 0U);
   EXPECT_NEAR(state->position, 0.0, 0.001);
   EXPECT_NEAR(state->velocity, 0.0, 0.001);
   EXPECT_NEAR(state->effort, 0.0, 0.01);
   EXPECT_DOUBLE_EQ(state->temperature, 30.0);
+}
+
+TEST(RsProtocolTest, DecodesPeriodicActiveReport) {
+  rs_motor_sdk::CanFrame frame;
+  frame.id = 0x180001FD;
+  frame.size = 8;
+  frame.data = {0x80, 0x00, 0x80, 0x00, 0x80, 0x00, 0x01, 0x2C};
+  const auto state = Protocol::decode_feedback(kMotor, frame);
+  ASSERT_TRUE(state.has_value());
+  EXPECT_EQ(state->fault, 0U);
 }
 
 } // namespace

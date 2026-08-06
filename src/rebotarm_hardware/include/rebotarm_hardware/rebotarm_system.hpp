@@ -88,6 +88,7 @@ private:
   double max_command_step_{0.05};
   bool allow_motor_enable_{false};
   bool hold_only_{false};
+  bool rs_reporting_{false};
   bool active_{false};
 };
 
