@@ -6,8 +6,8 @@
 #include <cmath>
 #include <csignal>
 #include <cstddef>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -21,7 +21,9 @@ constexpr double kDefaultDuration = 5.0;
 constexpr double kMinDuration = 1.0;
 constexpr double kMaxDuration = 120.0;
 constexpr double kPositionTolerance = 0.05;
+constexpr double kVelocityTolerance = 0.15;
 constexpr double kSettleTimeout = 5.0;
+constexpr std::size_t kSettleStableCycles = 10;
 using Clock = std::chrono::steady_clock;
 std::atomic<bool> stop_requested{false};
 
@@ -42,13 +44,14 @@ const char *source_name(rs_motor_sdk::CommunicationType source) {
 void print_state(const char *event, std::size_t index,
                  const rs_motor_sdk::MotorState &state, double elapsed,
                  double target_position, double target_velocity) {
-  std::cout << std::fixed << std::setprecision(6) << "[home-debug t="
-            << elapsed << "s] " << event << " joint" << index + 1
+  std::cout << std::fixed << std::setprecision(6) << "[home-debug t=" << elapsed
+            << "s] " << event << " joint" << index + 1
             << " frame=" << source_name(state.source) << " can_id=0x"
             << std::hex << state.raw_can_id << std::dec
             << " mode=" << unsigned(state.mode) << " fault=0x" << std::hex
-            << unsigned(state.fault) << std::dec << " target_pos="
-            << target_position << " actual_pos=" << state.position
+            << unsigned(state.fault) << std::dec
+            << " target_pos=" << target_position
+            << " actual_pos=" << state.position
             << " error=" << target_position - state.position
             << " target_vel=" << target_velocity
             << " actual_vel=" << state.velocity << " effort=" << state.effort
@@ -205,19 +208,17 @@ int main(int argc, char **argv) {
     if (options.verbose) {
       std::cout << "[home-debug] enable sent to joint" << i + 1 << '\n';
     }
-    std::cout << "Soft-starting joint" << i + 1
-              << " hold: " << kArmDuration << " s\n";
+    std::cout << "Soft-starting joint" << i + 1 << " hold: " << kArmDuration
+              << " s\n";
     const auto arm_begin = Clock::now();
     while (!stop_requested.load()) {
       const double elapsed =
           std::chrono::duration<double>(Clock::now() - arm_begin).count();
-      const double gain_scale =
-          std::clamp(elapsed / kArmDuration, 0.0, 1.0);
+      const double gain_scale = std::clamp(elapsed / kArmDuration, 0.0, 1.0);
       for (auto enabled : armed_joints) {
         const double scale = enabled == i ? gain_scale : 1.0;
-        if (!bus.send_mit(enabled,
-                          {start[enabled], 0.0, kp[enabled] * scale,
-                           kd[enabled] * scale, 0.0})) {
+        if (!bus.send_mit(enabled, {start[enabled], 0.0, kp[enabled] * scale,
+                                    kd[enabled] * scale, 0.0})) {
           std::cerr << "joint" << enabled + 1
                     << " soft-start command: " << bus.last_error() << '\n';
           armed = false;
@@ -237,12 +238,11 @@ int main(int argc, char **argv) {
           print_state("after-enable", index, current, elapsed, start[index],
                       0.0);
         if (current.fault != 0) {
-          print_state("soft-start-fault", index, current, elapsed,
-                      start[index], 0.0);
+          print_state("soft-start-fault", index, current, elapsed, start[index],
+                      0.0);
           std::cerr << "joint" << index + 1 << " fault=0x" << std::hex
                     << unsigned(current.fault) << std::dec
-                    << " while enabling joint" << i + 1
-                    << "; homing stopped\n";
+                    << " while enabling joint" << i + 1 << "; homing stopped\n";
           armed = false;
           break;
         }
@@ -308,8 +308,8 @@ int main(int argc, char **argv) {
       state[index] = current;
       last_feedback[index] = Clock::now();
       if (options.verbose &&
-          (elapsed <= 0.3 || Clock::now() - last_log[index] >=
-                                 std::chrono::milliseconds(200))) {
+          (elapsed <= 0.3 ||
+           Clock::now() - last_log[index] >= std::chrono::milliseconds(200))) {
         print_state("control", index, current, elapsed, target_position[index],
                     target_velocity[index]);
         last_log[index] = Clock::now();
@@ -346,11 +346,12 @@ int main(int argc, char **argv) {
   std::cout << "Settling at zero for up to " << kSettleTimeout << " s\n";
   const auto settle_begin = Clock::now();
   bool settled = false;
+  std::size_t stable_cycles = 0;
   while (!stop_requested.load()) {
     for (auto i : sel) {
       if (!bus.send_mit(i, {0.0, 0.0, kp[i], kd[i], 0.0})) {
-        std::cerr << "joint" << i + 1
-                  << " settle command: " << bus.last_error() << '\n';
+        std::cerr << "joint" << i + 1 << " settle command: " << bus.last_error()
+                  << '\n';
         ok = false;
         break;
       }
@@ -362,10 +363,14 @@ int main(int argc, char **argv) {
       ok = false;
       break;
     }
-    settled = std::all_of(sel.begin(), sel.end(), [&](auto i) {
-      return state[i].fault == 0 &&
-             std::abs(state[i].position) <= kPositionTolerance;
-    });
+    const bool within_tolerance =
+        std::all_of(sel.begin(), sel.end(), [&](auto i) {
+          return state[i].fault == 0 &&
+                 std::abs(state[i].position) <= kPositionTolerance &&
+                 std::abs(state[i].velocity) <= kVelocityTolerance;
+        });
+    stable_cycles = within_tolerance ? stable_cycles + 1 : 0;
+    settled = stable_cycles >= kSettleStableCycles;
     if (settled)
       break;
     const double settle_elapsed =
@@ -376,12 +381,14 @@ int main(int argc, char **argv) {
   }
   if (!settled) {
     std::cerr << (stop_requested.load() ? "Homing interrupted during settling\n"
-                                       : "Zero settling timeout\n");
+                                        : "Zero settling timeout\n");
     ok = false;
   }
   for (auto i : sel)
     std::cout << "joint" << i + 1 << " -> " << state[i].position << " rad"
-              << (std::abs(state[i].position) <= kPositionTolerance
+              << ", " << state[i].velocity << " rad/s"
+              << (std::abs(state[i].position) <= kPositionTolerance &&
+                          std::abs(state[i].velocity) <= kVelocityTolerance
                       ? " OK"
                       : " VERIFY FAILED")
               << '\n';

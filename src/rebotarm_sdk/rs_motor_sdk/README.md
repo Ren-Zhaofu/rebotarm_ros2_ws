@@ -58,7 +58,9 @@ velocity noise.
 
 After the minimum-jerk segment, the tool continues holding the zero target for
 up to 5 seconds so conservative gains can settle within the verification
-tolerance without increasing stiffness.
+tolerance without increasing stiffness. Position and velocity must both stay
+within tolerance for consecutive feedback cycles, so passing quickly through
+zero is not accepted as a completed home.
 
 ```bash
 scripts/motor/RS/motor_rs_home.sh --joint joint3
