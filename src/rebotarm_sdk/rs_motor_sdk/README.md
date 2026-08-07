@@ -71,8 +71,14 @@ zero is not accepted as a completed home.
 ```bash
 scripts/motor/RS/motor_rs_home.sh --joint joint3
 scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3
+scripts/motor/RS/motor_rs_home.sh --joint joint6 --hold
 scripts/motor/RS/motor_rs_home.sh --all --dry-run
 ```
+
+With `--hold`, successfully homed joints remain enabled at zero while the
+process keeps sending commands. Press `Ctrl+C` to disable them. A fault,
+feedback timeout, or position deviation beyond 0.2 rad also disables all
+selected motors.
 
 For hardware diagnosis, add `--verbose`. The tool prints the initial state,
 each enable event, early control feedback, and detailed target/actual values

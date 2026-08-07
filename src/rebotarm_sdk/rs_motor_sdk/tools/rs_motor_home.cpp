@@ -22,6 +22,7 @@ constexpr double kMinDuration = 1.0;
 constexpr double kMaxDuration = 120.0;
 constexpr double kPositionTolerance = 0.05;
 constexpr double kVelocityTolerance = 0.15;
+constexpr double kHoldPositionLimit = 0.2;
 constexpr double kSettleTimeout = 5.0;
 constexpr std::size_t kSettleStableCycles = 10;
 using Clock = std::chrono::steady_clock;
@@ -32,6 +33,7 @@ void request_stop(int) { stop_requested.store(true); }
 struct Options {
   double duration{kDefaultDuration};
   bool verbose{false};
+  bool hold{false};
   std::vector<std::size_t> joints;
 };
 
@@ -64,6 +66,10 @@ Options parse_options(int argc, char **argv) {
   for (int i = 3; i < argc; ++i) {
     if (std::string(argv[i]) == "--verbose") {
       options.verbose = true;
+      continue;
+    }
+    if (std::string(argv[i]) == "--hold") {
+      options.hold = true;
       continue;
     }
     if (std::string(argv[i]) == "--duration") {
@@ -114,7 +120,7 @@ int main(int argc, char **argv) {
   if (argc < 4 || std::string(argv[1]) != "--execute") {
     std::cerr << "usage: " << argv[0]
               << " --execute <can-interface> [--duration seconds] <joint-id> "
-                 "[joint-id ...] [--verbose]\n";
+                 "[joint-id ...] [--verbose] [--hold]\n";
     return 2;
   }
   Options options;
@@ -392,6 +398,42 @@ int main(int argc, char **argv) {
                       ? " OK"
                       : " VERIFY FAILED")
               << '\n';
+  if (ok && options.hold) {
+    std::cout << "Holding selected joints at zero; press Ctrl+C to disable\n";
+    while (!stop_requested.load()) {
+      for (auto i : sel) {
+        if (!bus.send_mit(i, {0.0, 0.0, kp[i], kd[i], 0.0})) {
+          std::cerr << "joint" << i + 1 << " hold command: " << bus.last_error()
+                    << '\n';
+          ok = false;
+          break;
+        }
+      }
+      if (!ok)
+        break;
+      if (!feedback(bus, sel, state, std::chrono::milliseconds(100))) {
+        std::cerr << "hold feedback timeout; disabling selected motors\n";
+        ok = false;
+        break;
+      }
+      for (auto i : sel) {
+        if (state[i].fault != 0 ||
+            std::abs(state[i].position) > kHoldPositionLimit) {
+          print_state("hold-abort", i, state[i], 0.0, 0.0, 0.0);
+          std::cerr << "joint" << i + 1
+                    << " exceeded hold safety limits; disabling selected "
+                       "motors\n";
+          ok = false;
+          break;
+        }
+      }
+      if (!ok)
+        break;
+      std::this_thread::sleep_for(kPeriod);
+    }
+    if (stop_requested.load())
+      std::cout << "Hold stopped; disabling selected motors\n";
+  }
   stop();
   return ok ? 0 : 1;
 }

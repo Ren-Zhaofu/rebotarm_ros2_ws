@@ -3,8 +3,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
 source "${SCRIPT_DIR}/can_common.bash"
-INTERFACE="${RS_CAN_INTERFACE:-can0}"; DURATION="${RS_HOME_DURATION:-5}"; MODE=""; VALUE=""; DRY_RUN=false; VERBOSE=false
-usage(){ echo "Usage: $0 --joint joint3|--joints joint1,joint3|--all [--interface can0] [--duration 5] [--verbose] [--dry-run]"; echo "Move selected RS joints to calibrated zero (0 rad) with a minimum-jerk trajectory."; }
+INTERFACE="${RS_CAN_INTERFACE:-can0}"; DURATION="${RS_HOME_DURATION:-5}"; MODE=""; VALUE=""; DRY_RUN=false; VERBOSE=false; HOLD=false
+usage(){ echo "Usage: $0 --joint joint3|--joints joint1,joint3|--all [--interface can0] [--duration 5] [--verbose] [--hold] [--dry-run]"; echo "Move selected RS joints to calibrated zero (0 rad) with a minimum-jerk trajectory."; }
 set_mode(){ [[ -z $MODE ]] || { echo "Choose exactly one selection option." >&2; exit 2; }; MODE=$1; VALUE=${2:-}; }
 while [[ $# -gt 0 ]]; do case $1 in
   --joint) [[ $# -ge 2 ]] || exit 2; set_mode joint "$2"; shift 2;;
@@ -13,6 +13,7 @@ while [[ $# -gt 0 ]]; do case $1 in
   --interface) [[ $# -ge 2 ]] || exit 2; INTERFACE=$2; shift 2;;
   --duration) [[ $# -ge 2 ]] || { echo "--duration requires a value" >&2; exit 2; }; DURATION=$2; shift 2;;
   --verbose) VERBOSE=true; shift;;
+  --hold) HOLD=true; shift;;
   --dry-run) DRY_RUN=true; shift;;
   --execute) shift;; # Kept for compatibility; execution is now the default.
   -h|--help) usage; exit 0;; *) echo "Unknown argument: $1" >&2; usage >&2; exit 2;; esac; done
@@ -27,6 +28,7 @@ echo "WARNING: selected joints will move to calibrated zero: $(printf 'joint%s '
 echo "Ensure the arm has clearance and can be stopped immediately."
 COMMAND=(ros2 run rs_motor_sdk rs_motor_home --execute "$INTERFACE" "${IDS[@]}" --duration "$DURATION")
 [[ $VERBOSE == true ]] && COMMAND+=(--verbose)
+[[ $HOLD == true ]] && COMMAND+=(--hold)
 if [[ $DRY_RUN == true ]]; then
   printf 'Dry run; no CAN command was sent: '; printf '%q ' "${COMMAND[@]}"; printf '\n'
   exit 0
