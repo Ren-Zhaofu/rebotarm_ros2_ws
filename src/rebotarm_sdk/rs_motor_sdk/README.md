@@ -49,8 +49,10 @@ motors and requires an interactive `RS_HOME` confirmation.
 Selected motors are disabled on exit:
 
 Before motion, the tool preloads a torque-free command at each measured
-position and ramps the hold gains for 0.5 seconds. This prevents an enable
-event from briefly applying a stale target or full control gains.
+position, then enables the selected motors one at a time and ramps each
+motor's hold gains for 0.5 seconds. This prevents an enable event from briefly
+applying a stale target or full control gains and spreads multi-axis startup
+load over time.
 
 ```bash
 scripts/motor/RS/motor_rs_home.sh --joint joint3

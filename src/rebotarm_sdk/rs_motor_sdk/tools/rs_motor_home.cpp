@@ -184,7 +184,8 @@ int main(int argc, char **argv) {
       return 1;
     }
   }
-  const auto diagnostic_begin = Clock::now();
+  std::vector<std::size_t> armed_joints;
+  bool armed = true;
   for (auto i : sel) {
     if (!bus.enable(i)) {
       std::cerr << bus.last_error() << '\n';
@@ -197,61 +198,58 @@ int main(int argc, char **argv) {
       stop();
       return 1;
     }
+    armed_joints.push_back(i);
     if (options.verbose) {
       std::cout << "[home-debug] enable sent to joint" << i + 1 << '\n';
-      const auto sample_end = Clock::now() + std::chrono::milliseconds(30);
-      while (Clock::now() < sample_end) {
+    }
+    std::cout << "Soft-starting joint" << i + 1
+              << " hold: " << kArmDuration << " s\n";
+    const auto arm_begin = Clock::now();
+    while (!stop_requested.load()) {
+      const double elapsed =
+          std::chrono::duration<double>(Clock::now() - arm_begin).count();
+      const double gain_scale =
+          std::clamp(elapsed / kArmDuration, 0.0, 1.0);
+      for (auto enabled : armed_joints) {
+        const double scale = enabled == i ? gain_scale : 1.0;
+        if (!bus.send_mit(enabled,
+                          {start[enabled], 0.0, kp[enabled] * scale,
+                           kd[enabled] * scale, 0.0})) {
+          std::cerr << "joint" << enabled + 1
+                    << " soft-start command: " << bus.last_error() << '\n';
+          armed = false;
+          break;
+        }
+      }
+      for (std::size_t n = 0; armed && n < sel.size() * 2; ++n) {
         rs_motor_sdk::MotorState current;
         std::size_t index = 0;
-        if (!bus.receive_state(current, index, std::chrono::milliseconds(5)))
+        if (!bus.receive_state(current, index, std::chrono::milliseconds(1)))
+          break;
+        if (std::find(armed_joints.begin(), armed_joints.end(), index) ==
+            armed_joints.end())
           continue;
         state[index] = current;
-        const auto t =
-            std::chrono::duration<double>(Clock::now() - diagnostic_begin)
-                .count();
-        print_state("after-enable", index, current, t, start[index], 0.0);
-        if (index == i)
+        if (options.verbose && index == i && elapsed <= 0.05)
+          print_state("after-enable", index, current, elapsed, start[index],
+                      0.0);
+        if (current.fault != 0) {
+          print_state("soft-start-fault", index, current, elapsed,
+                      start[index], 0.0);
+          std::cerr << "joint" << index + 1 << " fault=0x" << std::hex
+                    << unsigned(current.fault) << std::dec
+                    << " while enabling joint" << i + 1
+                    << "; homing stopped\n";
+          armed = false;
           break;
+        }
       }
-    }
-  }
-  std::cout << "Soft-starting motor hold: " << kArmDuration << " s\n";
-  const auto arm_begin = Clock::now();
-  bool armed = true;
-  while (!stop_requested.load()) {
-    const double elapsed =
-        std::chrono::duration<double>(Clock::now() - arm_begin).count();
-    const double gain_scale = std::clamp(elapsed / kArmDuration, 0.0, 1.0);
-    for (auto i : sel) {
-      if (!bus.send_mit(
-              i, {start[i], 0.0, kp[i] * gain_scale, kd[i] * gain_scale, 0.0})) {
-        std::cerr << "joint" << i + 1
-                  << " soft-start command: " << bus.last_error() << '\n';
-        armed = false;
+      if (!armed || elapsed >= kArmDuration)
         break;
-      }
+      std::this_thread::sleep_for(kPeriod);
     }
-    for (std::size_t n = 0; armed && n < sel.size() * 2; ++n) {
-      rs_motor_sdk::MotorState current;
-      std::size_t index = 0;
-      if (!bus.receive_state(current, index, std::chrono::milliseconds(1)))
-        break;
-      if (std::find(sel.begin(), sel.end(), index) == sel.end())
-        continue;
-      state[index] = current;
-      if (current.fault != 0) {
-        print_state("soft-start-fault", index, current, elapsed, start[index],
-                    0.0);
-        std::cerr << "joint" << index + 1 << " fault=0x" << std::hex
-                  << unsigned(current.fault) << std::dec
-                  << " during soft start; homing stopped\n";
-        armed = false;
-        break;
-      }
-    }
-    if (!armed || elapsed >= kArmDuration)
+    if (!armed || stop_requested.load())
       break;
-    std::this_thread::sleep_for(kPeriod);
   }
   if (!armed || stop_requested.load()) {
     stop();
