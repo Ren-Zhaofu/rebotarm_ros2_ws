@@ -178,8 +178,8 @@ int main(int argc, char **argv) {
   }
   // Conservative homing gains. High derivative gains amplify the measurable
   // standstill velocity noise and can make multiple enabled joints oscillate.
-  const std::array<double, kCount> kp{20.0, 40.0, 40.0, 15.0, 12.0, 10.0};
-  const std::array<double, kCount> kd{0.5, 0.8, 0.8, 0.4, 0.3, 0.3};
+  const std::array<double, kCount> kp{10.0, 15.0, 15.0, 15.0, 12.0, 10.0};
+  const std::array<double, kCount> kd{0.3, 0.3, 0.3, 0.4, 0.3, 0.3};
 
   // Preload a torque-free hold command so enable cannot apply a stale target.
   for (auto i : sel) {

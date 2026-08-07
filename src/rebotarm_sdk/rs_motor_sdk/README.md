@@ -56,6 +56,10 @@ multi-axis startup load over time. These gains are intentionally lower than
 the normal controller gains because high derivative gain amplifies standstill
 velocity noise.
 
+The higher-torque RS-06 motors on joints 1--3 use especially conservative
+homing gains to limit holding current while their behavior is validated on the
+assembled arm.
+
 After the minimum-jerk segment, the tool continues holding the zero target for
 up to 5 seconds so conservative gains can settle within the verification
 tolerance without increasing stiffness. Position and velocity must both stay
