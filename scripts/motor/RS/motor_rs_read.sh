@@ -6,9 +6,10 @@ WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
 INTERFACE="${RS_CAN_INTERFACE:-can0}"
 MODE="--watch"
 REFRESH_MS=100
+DRY_RUN=false
 
 usage() {
-  echo "Usage: $0 [--interface can0] [--refresh-ms 100] [--once]"
+  echo "Usage: $0 [--interface can0] [--refresh-ms 100] [--once] [--dry-run]"
   echo "Continuously print RobStride RS motor states without enabling motors."
 }
 
@@ -26,6 +27,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --once)
       MODE=""
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=true
       shift
       ;;
     -h|--help)
@@ -53,6 +58,17 @@ done
   exit 2
 }
 
+COMMAND=(ros2 run rs_motor_sdk rs_motor_read_state "${INTERFACE}")
+if [[ -n $MODE ]]; then
+  COMMAND+=("${MODE}" "${REFRESH_MS}")
+fi
+if [[ $DRY_RUN == true ]]; then
+  printf 'Dry run; no CAN command was sent: '
+  printf '%q ' "${COMMAND[@]}"
+  printf '\n'
+  exit 0
+fi
+
 set +u
 source /opt/ros/humble/setup.bash
 if [[ ! -f "${WORKSPACE_DIR}/install/setup.bash" ]]; then
@@ -62,8 +78,4 @@ fi
 source "${WORKSPACE_DIR}/install/setup.bash"
 set -u
 
-if [[ -n $MODE ]]; then
-  exec ros2 run rs_motor_sdk rs_motor_read_state "${INTERFACE}" "${MODE}" "${REFRESH_MS}"
-else
-  exec ros2 run rs_motor_sdk rs_motor_read_state "${INTERFACE}"
-fi
+exec "${COMMAND[@]}"

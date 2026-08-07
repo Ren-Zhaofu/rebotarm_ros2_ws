@@ -4,15 +4,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
 INTERFACE="${RS_CAN_INTERFACE:-can0}"
-EXECUTE=false
+DRY_RUN=false
 SELECTION_MODE=""
 SELECTION_VALUE=""
 
 usage() {
   echo "Usage:"
-  echo "  $0 --joint joint3 --execute [--interface can0]"
-  echo "  $0 --joints joint1,joint3,joint6 --execute [--interface can0]"
-  echo "  $0 --all --execute [--interface can0]"
+  echo "  $0 --joint joint3 [--interface can0] [--dry-run]"
+  echo "  $0 --joints joint1,joint3,joint6 [--interface can0] [--dry-run]"
+  echo "  $0 --all [--interface can0] [--dry-run]"
   echo "Set the current mechanical position as zero for selected RS motors."
 }
 
@@ -46,9 +46,12 @@ while [[ $# -gt 0 ]]; do
       INTERFACE=$2
       shift 2
       ;;
-    --execute)
-      EXECUTE=true
+    --dry-run)
+      DRY_RUN=true
       shift
+      ;;
+    --execute)
+      shift # Kept for compatibility; execution is now the default.
       ;;
     -h|--help)
       usage
@@ -63,11 +66,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n $SELECTION_MODE ]] || { usage >&2; exit 2; }
-[[ $EXECUTE == true ]] || {
-  echo "Refusing to change motor zero: --execute is required." >&2
-  usage >&2
-  exit 2
-}
 [[ $INTERFACE =~ ^[[:alnum:]_.-]+$ ]] || {
   echo "Invalid SocketCAN interface: $INTERFACE" >&2
   exit 2
@@ -109,6 +107,13 @@ done
 echo "WARNING: This permanently changes the software zero of: ${JOINT_LABELS[*]}"
 echo "The selected joints must already be positioned at their intended URDF zero."
 echo "The command will disable the selected motors before writing zero."
+COMMAND=(ros2 run rs_motor_sdk rs_motor_set_zero --execute "${INTERFACE}" "${JOINT_IDS[@]}")
+if [[ $DRY_RUN == true ]]; then
+  printf 'Dry run; no CAN command was sent: '
+  printf '%q ' "${COMMAND[@]}"
+  printf '\n'
+  exit 0
+fi
 read -r -p "Type RS_ZERO to continue: " confirmation
 [[ $confirmation == RS_ZERO ]] || { echo "Cancelled."; exit 1; }
 
@@ -121,4 +126,4 @@ fi
 source "${WORKSPACE_DIR}/install/setup.bash"
 set -u
 
-exec ros2 run rs_motor_sdk rs_motor_set_zero --execute "${INTERFACE}" "${JOINT_IDS[@]}"
+exec "${COMMAND[@]}"

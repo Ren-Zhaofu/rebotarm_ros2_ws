@@ -4,15 +4,15 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
 INTERFACE="${RS_CAN_INTERFACE:-can0}"
-EXECUTE=false
+DRY_RUN=false
 SELECTION_MODE=""
 SELECTION_VALUE=""
 
 usage() {
   echo "Usage:"
-  echo "  $0 --joint joint3 --execute [--interface can0]"
-  echo "  $0 --joints joint1,joint3,joint6 --execute [--interface can0]"
-  echo "  $0 --all --execute [--interface can0]"
+  echo "  $0 --joint joint3 [--interface can0] [--dry-run]"
+  echo "  $0 --joints joint1,joint3,joint6 [--interface can0] [--dry-run]"
+  echo "  $0 --all [--interface can0] [--dry-run]"
   echo "Disable selected RS motors, clear their faults, and verify feedback."
 }
 
@@ -31,14 +31,15 @@ while [[ $# -gt 0 ]]; do
     --joints) [[ $# -ge 2 ]] || exit 2; set_selection joints "$2"; shift 2 ;;
     --all) set_selection all; shift ;;
     --interface) [[ $# -ge 2 ]] || exit 2; INTERFACE=$2; shift 2 ;;
-    --execute) EXECUTE=true; shift ;;
+    --dry-run) DRY_RUN=true; shift ;;
+    --execute) shift ;; # Kept for compatibility; execution is now the default.
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
-[[ -n $SELECTION_MODE && $EXECUTE == true ]] || {
-  echo "--execute and one joint selection are required." >&2
+[[ -n $SELECTION_MODE ]] || {
+  echo "One joint selection is required." >&2
   usage >&2
   exit 2
 }
@@ -71,6 +72,13 @@ esac
 mapfile -t JOINT_IDS < <(printf '%s\n' "${JOINT_IDS[@]}" | sort -n -u)
 
 echo "Selected motors will be disabled before clearing faults: $(printf 'joint%s ' "${JOINT_IDS[@]}")"
+COMMAND=(ros2 run rs_motor_sdk rs_motor_clear_fault --execute "${INTERFACE}" "${JOINT_IDS[@]}")
+if [[ $DRY_RUN == true ]]; then
+  printf 'Dry run; no CAN command was sent: '
+  printf '%q ' "${COMMAND[@]}"
+  printf '\n'
+  exit 0
+fi
 read -r -p "Type RS_CLEAR to continue: " confirmation
 [[ $confirmation == RS_CLEAR ]] || { echo "Cancelled."; exit 1; }
 
@@ -83,4 +91,4 @@ source /opt/ros/humble/setup.bash
 source "${WORKSPACE_DIR}/install/setup.bash"
 set -u
 
-exec ros2 run rs_motor_sdk rs_motor_clear_fault --execute "${INTERFACE}" "${JOINT_IDS[@]}"
+exec "${COMMAND[@]}"
