@@ -16,6 +16,7 @@
 namespace {
 constexpr std::size_t kCount = 6;
 constexpr auto kPeriod = std::chrono::milliseconds(20);
+constexpr double kArmDuration = 0.5;
 constexpr double kDefaultDuration = 5.0;
 constexpr double kMinDuration = 1.0;
 constexpr double kMaxDuration = 120.0;
@@ -171,10 +172,28 @@ int main(int argc, char **argv) {
     if (options.verbose)
       print_state("initial", i, state[i], 0.0, start[i], 0.0);
   }
+  const std::array<double, kCount> kp{50.0, 150.0, 150.0, 50.0, 50.0, 50.0};
+  const std::array<double, kCount> kd{3.0, 5.0, 5.0, 5.0, 4.0, 4.0};
+
+  // Preload a torque-free hold command so enable cannot apply a stale target.
+  for (auto i : sel) {
+    if (!bus.send_mit(i, {start[i], 0.0, 0.0, 0.0, 0.0})) {
+      std::cerr << "joint" << i + 1
+                << " pre-enable command: " << bus.last_error() << '\n';
+      stop();
+      return 1;
+    }
+  }
   const auto diagnostic_begin = Clock::now();
   for (auto i : sel) {
     if (!bus.enable(i)) {
       std::cerr << bus.last_error() << '\n';
+      stop();
+      return 1;
+    }
+    if (!bus.send_mit(i, {start[i], 0.0, 0.0, 0.0, 0.0})) {
+      std::cerr << "joint" << i + 1
+                << " post-enable command: " << bus.last_error() << '\n';
       stop();
       return 1;
     }
@@ -196,8 +215,62 @@ int main(int argc, char **argv) {
       }
     }
   }
-  const std::array<double, kCount> kp{50.0, 150.0, 150.0, 50.0, 50.0, 50.0};
-  const std::array<double, kCount> kd{3.0, 5.0, 5.0, 5.0, 4.0, 4.0};
+  std::cout << "Soft-starting motor hold: " << kArmDuration << " s\n";
+  const auto arm_begin = Clock::now();
+  bool armed = true;
+  while (!stop_requested.load()) {
+    const double elapsed =
+        std::chrono::duration<double>(Clock::now() - arm_begin).count();
+    const double gain_scale = std::clamp(elapsed / kArmDuration, 0.0, 1.0);
+    for (auto i : sel) {
+      if (!bus.send_mit(
+              i, {start[i], 0.0, kp[i] * gain_scale, kd[i] * gain_scale, 0.0})) {
+        std::cerr << "joint" << i + 1
+                  << " soft-start command: " << bus.last_error() << '\n';
+        armed = false;
+        break;
+      }
+    }
+    for (std::size_t n = 0; armed && n < sel.size() * 2; ++n) {
+      rs_motor_sdk::MotorState current;
+      std::size_t index = 0;
+      if (!bus.receive_state(current, index, std::chrono::milliseconds(1)))
+        break;
+      if (std::find(sel.begin(), sel.end(), index) == sel.end())
+        continue;
+      state[index] = current;
+      if (current.fault != 0) {
+        print_state("soft-start-fault", index, current, elapsed, start[index],
+                    0.0);
+        std::cerr << "joint" << index + 1 << " fault=0x" << std::hex
+                  << unsigned(current.fault) << std::dec
+                  << " during soft start; homing stopped\n";
+        armed = false;
+        break;
+      }
+    }
+    if (!armed || elapsed >= kArmDuration)
+      break;
+    std::this_thread::sleep_for(kPeriod);
+  }
+  if (!armed || stop_requested.load()) {
+    stop();
+    return 1;
+  }
+  if (!feedback(bus, sel, state, std::chrono::milliseconds(500))) {
+    std::cerr << "feedback timeout after soft start; homing aborted\n";
+    stop();
+    return 1;
+  }
+  for (auto i : sel) {
+    if (state[i].fault != 0) {
+      std::cerr << "joint" << i + 1 << " fault=0x" << std::hex
+                << unsigned(state[i].fault) << std::dec << '\n';
+      stop();
+      return 1;
+    }
+    start[i] = state[i].position;
+  }
   const double duration = options.duration;
   std::cout << "Minimum-jerk homing duration: " << duration << " s\n";
   const auto begin = Clock::now();

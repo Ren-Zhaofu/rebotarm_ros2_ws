@@ -48,6 +48,10 @@ to select a duration from 1 to 120 seconds. The command enables and moves real
 motors and requires an interactive `RS_HOME` confirmation.
 Selected motors are disabled on exit:
 
+Before motion, the tool preloads a torque-free command at each measured
+position and ramps the hold gains for 0.5 seconds. This prevents an enable
+event from briefly applying a stale target or full control gains.
+
 ```bash
 scripts/motor/RS/motor_rs_home.sh --joint joint3
 scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3
