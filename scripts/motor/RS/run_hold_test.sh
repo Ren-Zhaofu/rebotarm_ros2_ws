@@ -31,7 +31,13 @@ wait "$launch_pid"
 
 status=$?
 printf '\n保持测试结束：运行时间 %s 秒，退出状态 %d。\n' "$duration" "$status"
-printf '失能：ROS 退出流程已对选中的电机发送失能命令。\n'
+printf '正在强制失能 joint5、joint6 并验证反馈...\n'
+if ros2 run rs_motor_sdk rs_motor_disable --execute can0 5 6; then
+  printf '失能结果：joint5、joint6 均已确认 Disabled。\n'
+else
+  printf '失能结果：反馈验证失败，请立即检查电机状态。\n' >&2
+  exit 1
+fi
 
 # timeout returns 124 when it stopped the command at the requested duration.
 if [[ "$status" -eq 124 || "$status" -eq 130 || "$status" -eq 143 ]]; then

@@ -28,6 +28,14 @@ std::string mode_name(std::uint8_t mode) {
   return name + "(" + std::to_string(mode) + ")";
 }
 
+std::string state_name(std::uint8_t state) {
+  constexpr std::array<const char *, 3> names{"Disabled", "Calibrating",
+                                              "Enabled"};
+  return state < names.size()
+             ? names[state]
+             : "Unknown(" + std::to_string(state) + ")";
+}
+
 std::string center_cell(const std::string &text, std::size_t width) {
   const std::string value = text.size() <= width ? text : text.substr(0, width);
   const auto padding = width - value.size();
@@ -47,6 +55,7 @@ void print_states(
     std::cout << "\033[H\033[J";
   }
   constexpr int joint_width = 8;
+  constexpr int state_width = 12;
   constexpr int mode_width = 12;
   constexpr int current_limit_width = 12;
   constexpr int position_width = 15;
@@ -55,9 +64,10 @@ void print_states(
   constexpr int temperature_width = 10;
   constexpr int fault_width = 8;
   const std::string divider =
-      "+--------+------------+------------+---------------+"
+      "+--------+------------+------------+------------+---------------+"
       "------------------+----------+----------+--------+\n";
   std::cout << divider << "|" << center_cell("Joint", joint_width) << "|"
+            << center_cell("State", state_width) << "|"
             << center_cell("Mode", mode_width) << "|"
             << center_cell("Limit Cur", current_limit_width) << "|"
             << center_cell("Position (rad)", position_width) << "|"
@@ -77,6 +87,7 @@ void print_states(
       current_limit << "unavailable";
     if (!seen[i]) {
       std::cout << "|" << center_cell(joint, joint_width) << "|"
+                << center_cell("unavailable", state_width) << "|"
                 << center_cell(mode, mode_width) << "|"
                 << center_cell(current_limit.str(), current_limit_width) << "|"
                 << center_cell("no feedback", position_width) << "|"
@@ -94,6 +105,7 @@ void print_states(
     temperature << std::fixed << std::setprecision(1) << state.temperature;
     fault << "0x" << std::hex << static_cast<unsigned int>(state.fault);
     std::cout << "|" << center_cell(joint, joint_width) << "|"
+              << center_cell(state_name(state.mode), state_width) << "|"
               << center_cell(mode, mode_width) << "|"
               << center_cell(current_limit.str(), current_limit_width) << "|"
               << center_cell(position.str(), position_width) << "|"
