@@ -67,8 +67,8 @@ void print_states(
       "+--------+------------+------------+------------+---------------+"
       "------------------+----------+----------+--------+\n";
   std::cout << divider << "|" << center_cell("Joint", joint_width) << "|"
-            << center_cell("State", state_width) << "|"
             << center_cell("Mode", mode_width) << "|"
+            << center_cell("State", state_width) << "|"
             << center_cell("Limit Cur", current_limit_width) << "|"
             << center_cell("Position (rad)", position_width) << "|"
             << center_cell("Velocity (rad/s)", velocity_width) << "|"
@@ -87,8 +87,8 @@ void print_states(
       current_limit << "unavailable";
     if (!seen[i]) {
       std::cout << "|" << center_cell(joint, joint_width) << "|"
-                << center_cell("unavailable", state_width) << "|"
                 << center_cell(mode, mode_width) << "|"
+                << center_cell("unavailable", state_width) << "|"
                 << center_cell(current_limit.str(), current_limit_width) << "|"
                 << center_cell("no feedback", position_width) << "|"
                 << center_cell("", velocity_width) << "|"
@@ -105,8 +105,8 @@ void print_states(
     temperature << std::fixed << std::setprecision(1) << state.temperature;
     fault << "0x" << std::hex << static_cast<unsigned int>(state.fault);
     std::cout << "|" << center_cell(joint, joint_width) << "|"
-              << center_cell(state_name(state.mode), state_width) << "|"
               << center_cell(mode, mode_width) << "|"
+              << center_cell(state_name(state.mode), state_width) << "|"
               << center_cell(current_limit.str(), current_limit_width) << "|"
               << center_cell(position.str(), position_width) << "|"
               << center_cell(velocity.str(), velocity_width) << "|"
