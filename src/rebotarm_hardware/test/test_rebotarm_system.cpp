@@ -71,6 +71,7 @@ void add_socketcan_parameters(hardware_interface::HardwareInfo &info,
       "0.05,0.05,0.05,0.05,0.05,0.05";
   info.hardware_parameters["feedback_timeout_ms"] = "100";
   info.hardware_parameters["max_command_step"] = "0.05";
+  info.hardware_parameters["max_tracking_error"] = "0.2";
 }
 
 void add_rs_socketcan_parameters(hardware_interface::HardwareInfo &info) {
@@ -83,13 +84,15 @@ void add_rs_socketcan_parameters(hardware_interface::HardwareInfo &info) {
   info.hardware_parameters["feedback_ids"] = "0xFD,0xFD,0xFD,0xFD,0xFD,0xFD";
   info.hardware_parameters["motor_models"] =
       "rs-06,rs-06,rs-06,rs-00,rs-00,rs-00";
-  info.hardware_parameters["mit_kp"] = "50,150,150,50,50,50";
-  info.hardware_parameters["mit_kd"] = "3,10,10,5,4,4";
+  info.hardware_parameters["mit_kp"] = "10,15,15,15,12,10";
+  info.hardware_parameters["mit_kd"] = "0.3,0.3,0.3,0.4,0.3,0.3";
   info.hardware_parameters["joint_directions"] = "1,1,1,1,1,1";
   info.hardware_parameters["joint_offsets"] = "0,0,0,0,0,0";
   info.hardware_parameters["position_velocity_limits"] = "1,1,1,1,1,1";
   info.hardware_parameters["feedback_timeout_ms"] = "100";
   info.hardware_parameters["max_command_step"] = "0.05";
+  info.hardware_parameters["max_tracking_error"] = "0.2";
+  info.hardware_parameters["rs_soft_start_ms"] = "1000";
 }
 
 TEST(RebotArmSystemTest, InitializesAndExportsExpectedInterfaces) {
@@ -145,6 +148,47 @@ TEST(RebotArmSystemTest, RejectsEnableWithoutSelectedJoint) {
   info.hardware_parameters["motor_enable_mask"] = "0,0,0,0,0,0";
   rebotarm_hardware::RebotArmSystem system;
   EXPECT_EQ(system.on_init(info), CallbackReturn::ERROR);
+}
+
+TEST(RebotArmSystemTest, RejectsUnsafeRsGainsAndSafetyParameters) {
+  auto gains = make_hardware_info();
+  add_rs_socketcan_parameters(gains);
+  gains.hardware_parameters["mit_kd"] = "0.3,0.3,0.3,5.1,0.3,0.3";
+  rebotarm_hardware::RebotArmSystem gains_system;
+  EXPECT_EQ(gains_system.on_init(gains), CallbackReturn::ERROR);
+
+  auto tracking = make_hardware_info();
+  add_rs_socketcan_parameters(tracking);
+  tracking.hardware_parameters["max_tracking_error"] = "0";
+  rebotarm_hardware::RebotArmSystem tracking_system;
+  EXPECT_EQ(tracking_system.on_init(tracking), CallbackReturn::ERROR);
+
+  auto ramp = make_hardware_info();
+  add_rs_socketcan_parameters(ramp);
+  ramp.hardware_parameters["rs_soft_start_ms"] = "10";
+  rebotarm_hardware::RebotArmSystem ramp_system;
+  EXPECT_EQ(ramp_system.on_init(ramp), CallbackReturn::ERROR);
+}
+
+TEST(RebotArmSystemTest, ValidatesRsCurrentLimits) {
+  using rs_motor_sdk::MotorModel;
+  EXPECT_TRUE(rebotarm_hardware::RebotArmSystem::valid_rs_current_limit(
+      MotorModel::kRs06, 57.0));
+  EXPECT_FALSE(rebotarm_hardware::RebotArmSystem::valid_rs_current_limit(
+      MotorModel::kRs06, 57.01));
+  EXPECT_TRUE(rebotarm_hardware::RebotArmSystem::valid_rs_current_limit(
+      MotorModel::kRs00, 16.0));
+  EXPECT_FALSE(rebotarm_hardware::RebotArmSystem::valid_rs_current_limit(
+      MotorModel::kRs00, 0.0));
+}
+
+TEST(RebotArmSystemTest, DetectsUnsafeTrackingError) {
+  EXPECT_FALSE(rebotarm_hardware::RebotArmSystem::tracking_error_exceeded(
+      0.1, -0.1, 0.2));
+  EXPECT_TRUE(rebotarm_hardware::RebotArmSystem::tracking_error_exceeded(
+      0.21, 0.0, 0.2));
+  EXPECT_TRUE(rebotarm_hardware::RebotArmSystem::tracking_error_exceeded(
+      std::numeric_limits<double>::quiet_NaN(), 0.0, 0.2));
 }
 
 TEST(RebotArmSystemTest, FollowsValidCommands) {

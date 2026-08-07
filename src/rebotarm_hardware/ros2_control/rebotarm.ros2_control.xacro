@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:macro name="rebotarm_ros2_control"
-    params="model transport:=mock can_interface:=can0 allow_motor_enable:=false motor_enable_mask:='0,0,0,0,0,0'">
+    params="model transport:=mock can_interface:=can0 allow_motor_enable:=false hold_only:=true motor_enable_mask:='0,0,0,0,0,0' rs_soft_start_ms:=1000 max_tracking_error:=0.2 mit_kp:='10,15,15,15,12,10' mit_kd:='0.3,0.3,0.3,0.4,0.3,0.3'">
     <ros2_control name="RebotArmSystem" type="system">
       <hardware>
         <plugin>rebotarm_hardware/RebotArmSystem</plugin>
@@ -11,13 +11,15 @@
           <!-- Real-hardware settings are deliberately explicit. -->
           <param name="can_interface">${can_interface}</param>
           <param name="allow_motor_enable">${allow_motor_enable}</param>
+          <param name="hold_only">${hold_only}</param>
           <param name="motor_enable_mask">${motor_enable_mask}</param>
           <param name="motor_ids">0x01,0x02,0x03,0x04,0x05,0x06</param>
           <param name="feedback_ids">${'0x11,0x12,0x13,0x14,0x15,0x16' if model == 'dm' else '0xFD,0xFD,0xFD,0xFD,0xFD,0xFD'}</param>
           <param name="motor_models">${'dm4340_48v,dm4340_48v,dm4340_48v,dm4310,dm4310,dm4310' if model == 'dm' else 'rs-06,rs-06,rs-06,rs-00,rs-00,rs-00'}</param>
           <xacro:if value="${model == 'rs'}">
-            <param name="mit_kp">50,150,150,50,50,50</param>
-            <param name="mit_kd">3,10,10,5,4,4</param>
+            <param name="mit_kp">${mit_kp}</param>
+            <param name="mit_kd">${mit_kd}</param>
+            <param name="rs_soft_start_ms">${rs_soft_start_ms}</param>
           </xacro:if>
           <param name="joint_directions">1,1,1,1,1,1</param>
           <param name="joint_offsets">0,0,0,0,0,0</param>
@@ -25,6 +27,7 @@
           <param name="position_velocity_limits">0.05,0.05,0.05,0.05,0.05,0.05</param>
           <param name="feedback_timeout_ms">100</param>
           <param name="max_command_step">0.05</param>
+          <param name="max_tracking_error">${max_tracking_error}</param>
         </xacro:if>
       </hardware>
 

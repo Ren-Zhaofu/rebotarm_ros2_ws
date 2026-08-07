@@ -27,6 +27,11 @@ public:
 
   static constexpr std::size_t kJointCount = 6;
 
+  static bool valid_rs_current_limit(rs_motor_sdk::MotorModel model,
+                                     double value);
+  static bool tracking_error_exceeded(double target, double measured,
+                                      double maximum_error);
+
   CallbackReturn on_init(const hardware_interface::HardwareInfo &info) override;
 
   std::vector<hardware_interface::StateInterface>
@@ -53,6 +58,8 @@ private:
   bool receive_one_feedback(std::chrono::microseconds timeout);
   bool await_feedback(bool require_enabled);
   bool send_position_velocity_commands();
+  bool send_rs_hold_commands(std::size_t ramp_joint, double ramp_scale);
+  bool activate_rs_motors();
   void disable_motors();
 
   std::array<double, kJointCount> position_states_{};
@@ -85,7 +92,9 @@ private:
   std::string transport_{"mock"};
   std::string can_interface_{"can0"};
   std::chrono::milliseconds feedback_timeout_{100};
+  std::chrono::milliseconds rs_soft_start_{1000};
   double max_command_step_{0.05};
+  double max_tracking_error_{0.2};
   bool allow_motor_enable_{false};
   bool hold_only_{false};
   bool rs_reporting_{false};
