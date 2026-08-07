@@ -6,7 +6,8 @@ motors, MIT commands, enable/disable, software zero, parameter access, and
 feedback decoding.
 
 Read one six-axis feedback set without enabling the motors. The state table
-automatically includes each motor's persistent `run_mode` parameter:
+automatically includes each motor's persistent `run_mode` and `limit_cur`
+parameters:
 
 ```bash
 ros2 run rs_motor_sdk rs_motor_read_state can0
