@@ -70,6 +70,8 @@ struct MotorState {
   double velocity{0.0};
   double effort{0.0};
   double temperature{0.0};
+  CommunicationType source{CommunicationType::kFeedback};
+  std::uint32_t raw_can_id{0};
 };
 
 class Protocol {

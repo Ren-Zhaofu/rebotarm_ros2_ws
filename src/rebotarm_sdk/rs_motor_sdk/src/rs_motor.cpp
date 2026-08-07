@@ -198,7 +198,9 @@ std::optional<MotorState> Protocol::decode_feedback(const MotorConfig &motor,
                     decode(word(0), -range.position, range.position),
                     decode(word(2), -range.velocity, range.velocity),
                     decode(word(4), -range.effort, range.effort),
-                    static_cast<double>(word(6)) / 10.0};
+                    static_cast<double>(word(6)) / 10.0,
+                    type,
+                    frame.id};
 }
 
 SocketCan::~SocketCan() { close(); }

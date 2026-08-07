@@ -7,6 +7,7 @@
 #include <csignal>
 #include <cstddef>
 #include <iostream>
+#include <iomanip>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -26,12 +27,40 @@ void request_stop(int) { stop_requested.store(true); }
 
 struct Options {
   double duration{kDefaultDuration};
+  bool verbose{false};
   std::vector<std::size_t> joints;
 };
+
+const char *source_name(rs_motor_sdk::CommunicationType source) {
+  return source == rs_motor_sdk::CommunicationType::kActiveReport
+             ? "active-report"
+             : "command-feedback";
+}
+
+void print_state(const char *event, std::size_t index,
+                 const rs_motor_sdk::MotorState &state, double elapsed,
+                 double target_position, double target_velocity) {
+  std::cout << std::fixed << std::setprecision(6) << "[home-debug t="
+            << elapsed << "s] " << event << " joint" << index + 1
+            << " frame=" << source_name(state.source) << " can_id=0x"
+            << std::hex << state.raw_can_id << std::dec
+            << " mode=" << unsigned(state.mode) << " fault=0x" << std::hex
+            << unsigned(state.fault) << std::dec << " target_pos="
+            << target_position << " actual_pos=" << state.position
+            << " error=" << target_position - state.position
+            << " target_vel=" << target_velocity
+            << " actual_vel=" << state.velocity << " effort=" << state.effort
+            << " temp=" << state.temperature << '\n'
+            << std::flush;
+}
 
 Options parse_options(int argc, char **argv) {
   Options options;
   for (int i = 3; i < argc; ++i) {
+    if (std::string(argv[i]) == "--verbose") {
+      options.verbose = true;
+      continue;
+    }
     if (std::string(argv[i]) == "--duration") {
       if (++i >= argc)
         throw std::invalid_argument("--duration requires a value");
@@ -80,7 +109,7 @@ int main(int argc, char **argv) {
   if (argc < 4 || std::string(argv[1]) != "--execute") {
     std::cerr << "usage: " << argv[0]
               << " --execute <can-interface> [--duration seconds] <joint-id> "
-                 "[joint-id ...]\n";
+                 "[joint-id ...] [--verbose]\n";
     return 2;
   }
   Options options;
@@ -136,24 +165,48 @@ int main(int argc, char **argv) {
       stop();
       return 1;
     }
-  for (auto i : sel)
+  std::array<double, kCount> start{};
+  for (auto i : sel) {
+    start[i] = state[i].position;
+    if (options.verbose)
+      print_state("initial", i, state[i], 0.0, start[i], 0.0);
+  }
+  const auto diagnostic_begin = Clock::now();
+  for (auto i : sel) {
     if (!bus.enable(i)) {
       std::cerr << bus.last_error() << '\n';
       stop();
       return 1;
     }
+    if (options.verbose) {
+      std::cout << "[home-debug] enable sent to joint" << i + 1 << '\n';
+      const auto sample_end = Clock::now() + std::chrono::milliseconds(30);
+      while (Clock::now() < sample_end) {
+        rs_motor_sdk::MotorState current;
+        std::size_t index = 0;
+        if (!bus.receive_state(current, index, std::chrono::milliseconds(5)))
+          continue;
+        state[index] = current;
+        const auto t =
+            std::chrono::duration<double>(Clock::now() - diagnostic_begin)
+                .count();
+        print_state("after-enable", index, current, t, start[index], 0.0);
+        if (index == i)
+          break;
+      }
+    }
+  }
   const std::array<double, kCount> kp{50.0, 150.0, 150.0, 50.0, 50.0, 50.0};
   const std::array<double, kCount> kd{3.0, 5.0, 5.0, 5.0, 4.0, 4.0};
-  std::array<double, kCount> start{};
-  for (auto i : sel) {
-    start[i] = state[i].position;
-  }
   const double duration = options.duration;
   std::cout << "Minimum-jerk homing duration: " << duration << " s\n";
   const auto begin = Clock::now();
   std::array<Clock::time_point, kCount> last_feedback{};
+  std::array<Clock::time_point, kCount> last_log{};
+  std::array<double, kCount> target_position = start;
+  std::array<double, kCount> target_velocity{};
   for (auto i : sel)
-    last_feedback[i] = begin;
+    last_feedback[i] = last_log[i] = begin;
   bool ok = true;
   while (!stop_requested.load()) {
     const double elapsed =
@@ -161,6 +214,8 @@ int main(int argc, char **argv) {
     for (auto i : sel) {
       const auto target =
           rs_motor_sdk::minimum_jerk(start[i], 0.0, duration, elapsed);
+      target_position[i] = target.position;
+      target_velocity[i] = target.velocity;
       if (!bus.send_mit(
               i, {target.position, target.velocity, kp[i], kd[i], 0.0})) {
         std::cerr << "joint" << i + 1 << " command: " << bus.last_error()
@@ -178,10 +233,19 @@ int main(int argc, char **argv) {
         continue;
       state[index] = current;
       last_feedback[index] = Clock::now();
+      if (options.verbose &&
+          (elapsed <= 0.3 || Clock::now() - last_log[index] >=
+                                 std::chrono::milliseconds(200))) {
+        print_state("control", index, current, elapsed, target_position[index],
+                    target_velocity[index]);
+        last_log[index] = Clock::now();
+      }
       if (current.fault != 0) {
+        print_state("fault", index, current, elapsed, target_position[index],
+                    target_velocity[index]);
         std::cerr << "joint" << index + 1 << " fault=0x" << std::hex
-                  << unsigned(current.fault) << std::dec
-                  << "; homing stopped\n";
+                  << unsigned(current.fault) << std::dec << " from "
+                  << source_name(current.source) << "; homing stopped\n";
         ok = false;
         break;
       }

@@ -69,6 +69,8 @@ TEST(RsProtocolTest, DecodesFeedback) {
   EXPECT_NEAR(state->velocity, 0.0, 0.001);
   EXPECT_NEAR(state->effort, 0.0, 0.01);
   EXPECT_DOUBLE_EQ(state->temperature, 30.0);
+  EXPECT_EQ(state->source, CommunicationType::kFeedback);
+  EXPECT_EQ(state->raw_can_id, frame.id);
 }
 
 TEST(RsProtocolTest, DecodesPeriodicActiveReport) {
@@ -79,6 +81,8 @@ TEST(RsProtocolTest, DecodesPeriodicActiveReport) {
   const auto state = Protocol::decode_feedback(kMotor, frame);
   ASSERT_TRUE(state.has_value());
   EXPECT_EQ(state->fault, 0U);
+  EXPECT_EQ(state->source, CommunicationType::kActiveReport);
+  EXPECT_EQ(state->raw_can_id, frame.id);
 }
 
 TEST(RsTrajectoryTest, MinimumJerkHasSmoothEndpointsAndMidpoint) {

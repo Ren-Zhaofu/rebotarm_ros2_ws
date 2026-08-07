@@ -54,6 +54,15 @@ scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3
 scripts/motor/RS/motor_rs_home.sh --all --dry-run
 ```
 
+For hardware diagnosis, add `--verbose`. The tool prints the initial state,
+each enable event, early control feedback, and detailed target/actual values
+for any fault, including whether it came from command feedback or a periodic
+active-report frame:
+
+```bash
+scripts/motor/RS/motor_rs_home.sh --all --duration 5 --verbose
+```
+
 Disable selected motors and clear their active fault state, then verify that
 feedback reports fault code zero:
 
