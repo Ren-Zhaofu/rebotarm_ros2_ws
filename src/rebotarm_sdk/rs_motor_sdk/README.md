@@ -56,6 +56,10 @@ multi-axis startup load over time. These gains are intentionally lower than
 the normal controller gains because high derivative gain amplifies standstill
 velocity noise.
 
+After the minimum-jerk segment, the tool continues holding the zero target for
+up to 5 seconds so conservative gains can settle within the verification
+tolerance without increasing stiffness.
+
 ```bash
 scripts/motor/RS/motor_rs_home.sh --joint joint3
 scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3

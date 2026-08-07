@@ -21,6 +21,7 @@ constexpr double kDefaultDuration = 5.0;
 constexpr double kMinDuration = 1.0;
 constexpr double kMaxDuration = 120.0;
 constexpr double kPositionTolerance = 0.05;
+constexpr double kSettleTimeout = 5.0;
 using Clock = std::chrono::steady_clock;
 std::atomic<bool> stop_requested{false};
 
@@ -342,15 +343,42 @@ int main(int argc, char **argv) {
     stop();
     return 1;
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  if (!feedback(bus, sel, state, std::chrono::milliseconds(500))) {
-    std::cerr << "verification feedback timeout\n";
-    stop();
-    return 1;
-  }
-  for (auto i : sel)
-    if (state[i].fault != 0 || std::abs(state[i].position) > kPositionTolerance)
+  std::cout << "Settling at zero for up to " << kSettleTimeout << " s\n";
+  const auto settle_begin = Clock::now();
+  bool settled = false;
+  while (!stop_requested.load()) {
+    for (auto i : sel) {
+      if (!bus.send_mit(i, {0.0, 0.0, kp[i], kd[i], 0.0})) {
+        std::cerr << "joint" << i + 1
+                  << " settle command: " << bus.last_error() << '\n';
+        ok = false;
+        break;
+      }
+    }
+    if (!ok)
+      break;
+    if (!feedback(bus, sel, state, std::chrono::milliseconds(100))) {
+      std::cerr << "settling feedback timeout\n";
       ok = false;
+      break;
+    }
+    settled = std::all_of(sel.begin(), sel.end(), [&](auto i) {
+      return state[i].fault == 0 &&
+             std::abs(state[i].position) <= kPositionTolerance;
+    });
+    if (settled)
+      break;
+    const double settle_elapsed =
+        std::chrono::duration<double>(Clock::now() - settle_begin).count();
+    if (settle_elapsed >= kSettleTimeout)
+      break;
+    std::this_thread::sleep_for(kPeriod);
+  }
+  if (!settled) {
+    std::cerr << (stop_requested.load() ? "Homing interrupted during settling\n"
+                                       : "Zero settling timeout\n");
+    ok = false;
+  }
   for (auto i : sel)
     std::cout << "joint" << i + 1 << " -> " << state[i].position << " rad"
               << (std::abs(state[i].position) <= kPositionTolerance
