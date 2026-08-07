@@ -5,16 +5,11 @@ protocol used by the reBotArm RS configuration. It supports RS-00 and RS-06
 motors, MIT commands, enable/disable, software zero, parameter access, and
 feedback decoding.
 
-Read one six-axis feedback set without enabling the motors:
+Read one six-axis feedback set without enabling the motors. The state table
+automatically includes each motor's persistent `run_mode` parameter:
 
 ```bash
 ros2 run rs_motor_sdk rs_motor_read_state can0
-```
-
-Read the persistent `run_mode` parameter without enabling or writing motors:
-
-```bash
-scripts/motor/RS/motor_rs_read.sh --mode
 ```
 
 Continuously refresh the state table every 100 ms until `Ctrl+C`:
