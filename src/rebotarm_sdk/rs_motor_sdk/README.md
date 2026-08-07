@@ -50,9 +50,11 @@ Selected motors are disabled on exit:
 
 Before motion, the tool preloads a torque-free command at each measured
 position, then enables the selected motors one at a time and ramps each
-motor's hold gains for 0.5 seconds. This prevents an enable event from briefly
-applying a stale target or full control gains and spreads multi-axis startup
-load over time.
+motor's conservative homing gains for 1 second. This prevents an enable event
+from briefly applying a stale target or full control gains and spreads
+multi-axis startup load over time. These gains are intentionally lower than
+the normal controller gains because high derivative gain amplifies standstill
+velocity noise.
 
 ```bash
 scripts/motor/RS/motor_rs_home.sh --joint joint3

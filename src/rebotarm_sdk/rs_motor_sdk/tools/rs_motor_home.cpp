@@ -16,7 +16,7 @@
 namespace {
 constexpr std::size_t kCount = 6;
 constexpr auto kPeriod = std::chrono::milliseconds(20);
-constexpr double kArmDuration = 0.5;
+constexpr double kArmDuration = 1.0;
 constexpr double kDefaultDuration = 5.0;
 constexpr double kMinDuration = 1.0;
 constexpr double kMaxDuration = 120.0;
@@ -172,8 +172,10 @@ int main(int argc, char **argv) {
     if (options.verbose)
       print_state("initial", i, state[i], 0.0, start[i], 0.0);
   }
-  const std::array<double, kCount> kp{50.0, 150.0, 150.0, 50.0, 50.0, 50.0};
-  const std::array<double, kCount> kd{3.0, 5.0, 5.0, 5.0, 4.0, 4.0};
+  // Conservative homing gains. High derivative gains amplify the measurable
+  // standstill velocity noise and can make multiple enabled joints oscillate.
+  const std::array<double, kCount> kp{20.0, 40.0, 40.0, 15.0, 12.0, 10.0};
+  const std::array<double, kCount> kd{0.5, 0.8, 0.8, 0.4, 0.3, 0.3};
 
   // Preload a torque-free hold command so enable cannot apply a stale target.
   for (auto i : sel) {
