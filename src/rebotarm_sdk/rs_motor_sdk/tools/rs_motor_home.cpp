@@ -15,27 +15,46 @@
 namespace {
 constexpr std::size_t kCount = 6;
 constexpr auto kPeriod = std::chrono::milliseconds(20);
-constexpr double kMaxVelocity = 0.10;
-constexpr double kMinDuration = 2.0;
+constexpr double kDefaultDuration = 5.0;
+constexpr double kMinDuration = 1.0;
+constexpr double kMaxDuration = 120.0;
 constexpr double kPositionTolerance = 0.05;
 using Clock = std::chrono::steady_clock;
 std::atomic<bool> stop_requested{false};
 
 void request_stop(int) { stop_requested.store(true); }
 
-std::vector<std::size_t> joints(int argc, char **argv) {
-  std::vector<std::size_t> out;
+struct Options {
+  double duration{kDefaultDuration};
+  std::vector<std::size_t> joints;
+};
+
+Options parse_options(int argc, char **argv) {
+  Options options;
   for (int i = 3; i < argc; ++i) {
+    if (std::string(argv[i]) == "--duration") {
+      if (++i >= argc)
+        throw std::invalid_argument("--duration requires a value");
+      std::size_t used = 0;
+      options.duration = std::stod(argv[i], &used);
+      if (used != std::string(argv[i]).size() ||
+          !std::isfinite(options.duration) || options.duration < kMinDuration ||
+          options.duration > kMaxDuration) {
+        throw std::invalid_argument("duration must be from 1 to 120 seconds");
+      }
+      continue;
+    }
     std::size_t used = 0;
     const auto n = std::stoul(argv[i], &used);
     if (used != std::string(argv[i]).size() || n < 1 || n > kCount)
       throw std::invalid_argument("joint ID must be from 1 to 6");
-    if (std::find(out.begin(), out.end(), n - 1) == out.end())
-      out.push_back(n - 1);
+    if (std::find(options.joints.begin(), options.joints.end(), n - 1) ==
+        options.joints.end())
+      options.joints.push_back(n - 1);
   }
-  if (out.empty())
+  if (options.joints.empty())
     throw std::invalid_argument("at least one joint ID is required");
-  return out;
+  return options;
 }
 
 bool feedback(rs_motor_sdk::MotorBus &bus, const std::vector<std::size_t> &sel,
@@ -60,16 +79,18 @@ bool feedback(rs_motor_sdk::MotorBus &bus, const std::vector<std::size_t> &sel,
 int main(int argc, char **argv) {
   if (argc < 4 || std::string(argv[1]) != "--execute") {
     std::cerr << "usage: " << argv[0]
-              << " --execute <can-interface> <joint-id> [joint-id ...]\n";
+              << " --execute <can-interface> [--duration seconds] <joint-id> "
+                 "[joint-id ...]\n";
     return 2;
   }
-  std::vector<std::size_t> sel;
+  Options options;
   try {
-    sel = joints(argc, argv);
+    options = parse_options(argc, argv);
   } catch (const std::exception &e) {
     std::cerr << e.what() << '\n';
     return 2;
   }
+  const auto &sel = options.joints;
   const std::array<rs_motor_sdk::MotorModel, kCount> models{
       rs_motor_sdk::MotorModel::kRs06, rs_motor_sdk::MotorModel::kRs06,
       rs_motor_sdk::MotorModel::kRs06, rs_motor_sdk::MotorModel::kRs00,
@@ -124,16 +145,11 @@ int main(int argc, char **argv) {
   const std::array<double, kCount> kp{50.0, 150.0, 150.0, 50.0, 50.0, 50.0};
   const std::array<double, kCount> kd{3.0, 5.0, 5.0, 5.0, 4.0, 4.0};
   std::array<double, kCount> start{};
-  double max_distance = 0.0;
   for (auto i : sel) {
     start[i] = state[i].position;
-    max_distance = std::max(max_distance, std::abs(start[i]));
   }
-  // With a minimum-jerk blend, T=2*d/v keeps peak speed at 0.9375*v.
-  const double duration =
-      std::max(kMinDuration, 2.0 * max_distance / kMaxVelocity);
-  std::cout << "Minimum-jerk homing duration: " << duration
-            << " s (speed setting " << kMaxVelocity << " rad/s)\n";
+  const double duration = options.duration;
+  std::cout << "Minimum-jerk homing duration: " << duration << " s\n";
   const auto begin = Clock::now();
   std::array<Clock::time_point, kCount> last_feedback{};
   for (auto i : sel)

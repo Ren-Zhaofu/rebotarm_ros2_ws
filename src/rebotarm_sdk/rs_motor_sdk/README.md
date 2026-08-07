@@ -36,14 +36,15 @@ scripts/motor/RS/motor_rs_zero.sh --all --execute
 ```
 
 Move one, multiple, or all joints to their calibrated zero position with a
-minimum-jerk trajectory and a conservative `0.10 rad/s` speed setting.
-The command enables and moves real motors, so it requires both `--execute` and
-an interactive `RS_HOME` confirmation. Selected motors are disabled on exit:
+minimum-jerk trajectory. The default duration is 5 seconds; use `--duration`
+to select a duration from 1 to 120 seconds. The command enables and moves real
+motors and requires an interactive `RS_HOME` confirmation.
+Selected motors are disabled on exit:
 
 ```bash
-scripts/motor/RS/motor_rs_home.sh --joint joint3 --execute
-scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --execute
-scripts/motor/RS/motor_rs_home.sh --all --execute
+scripts/motor/RS/motor_rs_home.sh --joint joint3
+scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3
+scripts/motor/RS/motor_rs_home.sh --all --dry-run
 ```
 
 Disable selected motors and clear their active fault state, then verify that
