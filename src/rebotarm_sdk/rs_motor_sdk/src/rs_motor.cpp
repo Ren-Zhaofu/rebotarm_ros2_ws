@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <stdexcept>
+#include <thread>
 #include <type_traits>
 
 #include <linux/can.h>
@@ -19,6 +20,8 @@ namespace rs_motor_sdk {
 namespace {
 
 constexpr std::uint32_t kExtendedIdMask = 0x1FFFFFFF;
+constexpr int kSendAttempts = 6;
+constexpr auto kSendRetryDelay = std::chrono::milliseconds(1);
 
 void validate_motor(const MotorConfig &motor) {
   if (motor.motor_id == 0) {
@@ -284,11 +287,21 @@ bool SocketCan::send(const CanFrame &frame) {
   }
   raw.can_dlc = frame.size;
   std::copy_n(frame.data.begin(), frame.size, raw.data);
-  if (::write(fd_, &raw, sizeof(raw)) != static_cast<ssize_t>(sizeof(raw))) {
-    set_error("write CAN frame");
-    return false;
+  for (int attempt = 0; attempt < kSendAttempts; ++attempt) {
+    if (::write(fd_, &raw, sizeof(raw)) == static_cast<ssize_t>(sizeof(raw))) {
+      return true;
+    }
+    const int write_error = errno;
+    const bool retryable = write_error == ENOBUFS || write_error == EAGAIN ||
+                           write_error == EWOULDBLOCK || write_error == EINTR;
+    if (!retryable || attempt + 1 == kSendAttempts) {
+      errno = write_error;
+      set_error("write CAN frame");
+      return false;
+    }
+    std::this_thread::sleep_for(kSendRetryDelay);
   }
-  return true;
+  return false;
 }
 
 bool SocketCan::receive(CanFrame &frame, std::chrono::microseconds timeout) {
