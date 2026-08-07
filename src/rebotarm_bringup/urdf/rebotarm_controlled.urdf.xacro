@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<robot name="rebotarm" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="model" default="rs"/>
+  <xacro:arg name="transport" default="mock"/>
+  <xacro:arg name="can_interface" default="can0"/>
+  <xacro:arg name="allow_motor_enable" default="false"/>
+  <xacro:arg name="hold_only" default="true"/>
+  <xacro:arg name="motor_enable_mask" default="0,0,0,0,0,0"/>
+  <xacro:property name="model" value="$(arg model)"/>
+  <xacro:property name="transport" value="$(arg transport)"/>
+
+  <xacro:if value="${model == 'dm'}">
+    <xacro:include filename="$(find rebotarm_description)/urdf/dm/urdf/rebotarm_dm.urdf.xacro"/>
+  </xacro:if>
+  <xacro:if value="${model == 'rs'}">
+    <xacro:include filename="$(find rebotarm_description)/urdf/rs/urdf/rebotarm_rs.urdf.xacro"/>
+  </xacro:if>
+
+  <xacro:include filename="$(find rebotarm_hardware)/ros2_control/rebotarm.ros2_control.xacro"/>
+  <xacro:rebotarm_ros2_control
+    model="${model}"
+    transport="${transport}"
+    can_interface="$(arg can_interface)"
+    allow_motor_enable="$(arg allow_motor_enable)"
+    hold_only="$(arg hold_only)"
+    motor_enable_mask="$(arg motor_enable_mask)"/>
+</robot>
