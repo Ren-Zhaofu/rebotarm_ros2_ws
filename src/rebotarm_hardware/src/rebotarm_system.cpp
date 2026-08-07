@@ -887,6 +887,7 @@ void RebotArmSystem::disable_motors() {
   }
   if (std::any_of(motor_enabled_.begin(), motor_enabled_.end(),
                   [](bool enabled) { return enabled; })) {
+    bool all_disabled = true;
     for (int attempt = 0; attempt < 2; ++attempt) {
       for (std::size_t i = 0; i < kJointCount; ++i) {
         if (!motor_enabled_[i]) {
@@ -895,6 +896,7 @@ void RebotArmSystem::disable_motors() {
         const bool disabled =
             model_ == "dm" ? bus_->disable(i) : rs_bus_->disable(i);
         if (!disabled) {
+          all_disabled = false;
           RCLCPP_ERROR(kLogger, "Motor disable command failed for joint%zu: %s",
                        i + 1,
                        model_ == "dm" ? bus_->last_error().c_str()
@@ -902,6 +904,11 @@ void RebotArmSystem::disable_motors() {
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    if (all_disabled) {
+      RCLCPP_INFO(kLogger,
+                  "Motor disable commands sent successfully to all enabled "
+                  "joints");
     }
   }
   if (model_ == "rs") {
