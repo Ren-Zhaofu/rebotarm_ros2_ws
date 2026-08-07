@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
+source "${SCRIPT_DIR}/can_common.bash"
 INTERFACE="${RS_CAN_INTERFACE:-can0}"
 DRY_RUN=false
 SELECTION_MODE=""
@@ -79,6 +80,7 @@ if [[ $DRY_RUN == true ]]; then
   printf '\n'
   exit 0
 fi
+ensure_rs_can_interface "$INTERFACE"
 read -r -p "Type RS_CLEAR to continue: " confirmation
 [[ $confirmation == RS_CLEAR ]] || { echo "Cancelled."; exit 1; }
 

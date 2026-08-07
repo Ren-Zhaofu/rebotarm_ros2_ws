@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
+source "${SCRIPT_DIR}/can_common.bash"
 INTERFACE="${RS_CAN_INTERFACE:-can0}"
 MODE="--watch"
 REFRESH_MS=100
@@ -68,6 +69,8 @@ if [[ $DRY_RUN == true ]]; then
   printf '\n'
   exit 0
 fi
+
+ensure_rs_can_interface "$INTERFACE"
 
 set +u
 source /opt/ros/humble/setup.bash

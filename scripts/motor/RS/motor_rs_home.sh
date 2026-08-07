@@ -2,6 +2,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
+source "${SCRIPT_DIR}/can_common.bash"
 INTERFACE="${RS_CAN_INTERFACE:-can0}"; DURATION="${RS_HOME_DURATION:-5}"; MODE=""; VALUE=""; DRY_RUN=false
 usage(){ echo "Usage: $0 --joint joint3|--joints joint1,joint3|--all [--interface can0] [--duration 5] [--dry-run]"; echo "Move selected RS joints to calibrated zero (0 rad) with a minimum-jerk trajectory."; }
 set_mode(){ [[ -z $MODE ]] || { echo "Choose exactly one selection option." >&2; exit 2; }; MODE=$1; VALUE=${2:-}; }
@@ -28,6 +29,7 @@ if [[ $DRY_RUN == true ]]; then
   printf 'Dry run; no CAN command was sent: '; printf '%q ' "${COMMAND[@]}"; printf '\n'
   exit 0
 fi
+ensure_rs_can_interface "$INTERFACE"
 read -r -p "Type RS_HOME to continue: " confirm; [[ $confirm == RS_HOME ]] || { echo Cancelled.; exit 1; }
 set +u
 source /opt/ros/humble/setup.bash

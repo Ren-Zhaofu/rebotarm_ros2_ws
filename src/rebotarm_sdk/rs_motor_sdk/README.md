@@ -25,6 +25,13 @@ scripts/motor/RS/motor_rs_read.sh --refresh-ms 200
 scripts/motor/RS/motor_rs_read.sh --once
 ```
 
+All scripts under `scripts/motor/RS/` check the selected SocketCAN interface
+before accessing hardware. An interface that is already active is left
+unchanged. A down, stopped, or bus-off interface is automatically configured
+for classic CAN at 1 Mbps with 100 ms bus-off restart and brought up using
+`sudo`. Override these defaults with `RS_CAN_BITRATE` and
+`RS_CAN_RESTART_MS` when required. `--dry-run` never changes the interface.
+
 Set the current position as zero for one, multiple, or all arm joints. This is
 a persistent calibration operation and requires both `--execute` and an
 interactive `RS_ZERO` confirmation:
