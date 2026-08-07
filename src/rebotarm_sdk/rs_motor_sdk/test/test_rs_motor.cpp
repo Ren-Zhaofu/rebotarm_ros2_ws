@@ -55,6 +55,19 @@ TEST(RsProtocolTest, EncodesFloatParameterWriteLittleEndian) {
   EXPECT_EQ(frame.data[7], 0x3F);
 }
 
+TEST(RsProtocolTest, DecodesParameterResponse) {
+  rs_motor_sdk::CanFrame frame;
+  frame.id = 0x110001FDU;
+  frame.size = 8;
+  frame.data = {0x05, 0x70, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
+  const auto response = Protocol::decode_parameter(kMotor, frame);
+  ASSERT_TRUE(response.has_value());
+  EXPECT_EQ(response->motor_id, 1U);
+  EXPECT_EQ(response->index, 0x7005U);
+  EXPECT_EQ(response->value,
+            (std::array<std::uint8_t, 4>{0x02, 0x00, 0x00, 0x00}));
+}
+
 TEST(RsProtocolTest, DecodesFeedback) {
   rs_motor_sdk::CanFrame frame;
   frame.id = 0x020001FD;

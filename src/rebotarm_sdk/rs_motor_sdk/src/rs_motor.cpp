@@ -203,6 +203,23 @@ std::optional<MotorState> Protocol::decode_feedback(const MotorConfig &motor,
                     frame.id};
 }
 
+std::optional<ParameterResponse>
+Protocol::decode_parameter(const MotorConfig &motor, const CanFrame &frame) {
+  if (!frame.extended || frame.size != 8 ||
+      communication_type(frame) != CommunicationType::kReadParameter ||
+      static_cast<std::uint8_t>(frame.id) != motor.host_id ||
+      static_cast<std::uint8_t>(frame.id >> 8) != motor.motor_id) {
+    return std::nullopt;
+  }
+  const auto index = static_cast<std::uint16_t>(
+      static_cast<std::uint16_t>(frame.data[0]) |
+      (static_cast<std::uint16_t>(frame.data[1]) << 8));
+  return ParameterResponse{
+      motor.motor_id,
+      index,
+      {frame.data[4], frame.data[5], frame.data[6], frame.data[7]}};
+}
+
 SocketCan::~SocketCan() { close(); }
 
 void SocketCan::set_error(const std::string &operation) {
@@ -381,6 +398,32 @@ bool MotorBus::receive_state(MotorState &state, std::size_t &motor_index,
     }
   }
   last_error_ = "CAN frame is not RobStride feedback for a configured motor";
+  return false;
+}
+
+bool MotorBus::receive_parameter(ParameterResponse &response,
+                                 std::size_t &motor_index,
+                                 std::chrono::microseconds timeout) {
+  const auto deadline = std::chrono::steady_clock::now() + timeout;
+  while (std::chrono::steady_clock::now() < deadline) {
+    const auto remaining =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            deadline - std::chrono::steady_clock::now());
+    CanFrame frame;
+    if (!socket_.receive(frame, remaining)) {
+      last_error_ = socket_.last_error();
+      return false;
+    }
+    for (std::size_t i = 0; i < motors_.size(); ++i) {
+      const auto decoded = Protocol::decode_parameter(motors_[i], frame);
+      if (decoded) {
+        response = *decoded;
+        motor_index = i;
+        return true;
+      }
+    }
+  }
+  last_error_ = "CAN parameter response timeout";
   return false;
 }
 

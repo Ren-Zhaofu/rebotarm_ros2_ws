@@ -8,10 +8,12 @@ INTERFACE="${RS_CAN_INTERFACE:-can0}"
 MODE="--watch"
 REFRESH_MS=100
 DRY_RUN=false
+READ_MODE=false
 
 usage() {
-  echo "Usage: $0 [--interface can0] [--refresh-ms 100] [--once] [--dry-run]"
+  echo "Usage: $0 [--interface can0] [--refresh-ms 100] [--once] [--mode] [--dry-run]"
   echo "Continuously print RobStride RS motor states without enabling motors."
+  echo "Use --mode to read each motor's run_mode parameter once."
 }
 
 while [[ $# -gt 0 ]]; do
@@ -28,6 +30,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --once)
       MODE=""
+      shift
+      ;;
+    --mode)
+      READ_MODE=true
       shift
       ;;
     --dry-run)
@@ -59,8 +65,12 @@ done
   exit 2
 }
 
-COMMAND=(ros2 run rs_motor_sdk rs_motor_read_state "${INTERFACE}")
-if [[ -n $MODE ]]; then
+if [[ $READ_MODE == true ]]; then
+  COMMAND=(ros2 run rs_motor_sdk rs_motor_read_mode "${INTERFACE}")
+else
+  COMMAND=(ros2 run rs_motor_sdk rs_motor_read_state "${INTERFACE}")
+fi
+if [[ $READ_MODE == false && -n $MODE ]]; then
   COMMAND+=("${MODE}" "${REFRESH_MS}")
 fi
 if [[ $DRY_RUN == true ]]; then

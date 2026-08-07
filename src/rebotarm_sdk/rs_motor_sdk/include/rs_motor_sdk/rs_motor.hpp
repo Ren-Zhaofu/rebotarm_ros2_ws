@@ -74,6 +74,12 @@ struct MotorState {
   std::uint32_t raw_can_id{0};
 };
 
+struct ParameterResponse {
+  std::uint8_t motor_id{0};
+  std::uint16_t index{0};
+  std::array<std::uint8_t, 4> value{};
+};
+
 class Protocol {
 public:
   static Limits limits(MotorModel model);
@@ -88,6 +94,8 @@ public:
                                       std::uint16_t index, float value);
   static std::optional<MotorState> decode_feedback(const MotorConfig &motor,
                                                    const CanFrame &frame);
+  static std::optional<ParameterResponse>
+  decode_parameter(const MotorConfig &motor, const CanFrame &frame);
   static CommunicationType communication_type(const CanFrame &frame);
 };
 
@@ -130,6 +138,8 @@ public:
                            float value);
   bool receive_state(MotorState &state, std::size_t &motor_index,
                      std::chrono::microseconds timeout);
+  bool receive_parameter(ParameterResponse &response, std::size_t &motor_index,
+                         std::chrono::microseconds timeout);
 
 private:
   bool send(const CanFrame &frame);
