@@ -25,6 +25,8 @@ add_executable(rs_motor_home tools/rs_motor_home.cpp)
 target_link_libraries(rs_motor_home ${PROJECT_NAME})
 add_executable(rs_motor_clear_fault tools/rs_motor_clear_fault.cpp)
 target_link_libraries(rs_motor_clear_fault ${PROJECT_NAME})
+add_executable(rs_motor_set_current_limit tools/rs_motor_set_current_limit.cpp)
+target_link_libraries(rs_motor_set_current_limit ${PROJECT_NAME})
 
 install(TARGETS ${PROJECT_NAME}
   EXPORT export_${PROJECT_NAME}
@@ -36,6 +38,7 @@ install(TARGETS rs_motor_read_state DESTINATION lib/${PROJECT_NAME})
 install(TARGETS rs_motor_set_zero DESTINATION lib/${PROJECT_NAME})
 install(TARGETS rs_motor_home DESTINATION lib/${PROJECT_NAME})
 install(TARGETS rs_motor_clear_fault DESTINATION lib/${PROJECT_NAME})
+install(TARGETS rs_motor_set_current_limit DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 
 if(BUILD_TESTING)

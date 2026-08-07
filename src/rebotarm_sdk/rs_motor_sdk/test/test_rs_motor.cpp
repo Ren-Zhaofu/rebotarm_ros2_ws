@@ -55,6 +55,14 @@ TEST(RsProtocolTest, EncodesFloatParameterWriteLittleEndian) {
   EXPECT_EQ(frame.data[7], 0x3F);
 }
 
+TEST(RsProtocolTest, BuildsCapturedStoreParametersCommand) {
+  // Captured from installed motorbridge store_parameters() on vcan.
+  const auto frame = Protocol::store_parameters(kMotor);
+  EXPECT_EQ(frame.id, 0x1600FD01U);
+  EXPECT_EQ(frame.size, 8U);
+  EXPECT_EQ(frame.data, (std::array<std::uint8_t, 8>{1, 2, 3, 4, 5, 6, 7, 8}));
+}
+
 TEST(RsProtocolTest, DecodesParameterResponse) {
   rs_motor_sdk::CanFrame frame;
   frame.id = 0x110001FDU;

@@ -171,6 +171,13 @@ CanFrame Protocol::write_parameter_f32(const MotorConfig &motor,
   return frame;
 }
 
+CanFrame Protocol::store_parameters(const MotorConfig &motor) {
+  auto frame = command(motor, CommunicationType::kStoreParameters,
+                       static_cast<std::uint16_t>(motor.host_id));
+  frame.data = {1, 2, 3, 4, 5, 6, 7, 8};
+  return frame;
+}
+
 CommunicationType Protocol::communication_type(const CanFrame &frame) {
   return static_cast<CommunicationType>((frame.id >> 24) & 0x1F);
 }
@@ -380,6 +387,9 @@ bool MotorBus::read_parameter(std::size_t i, std::uint16_t parameter) {
 bool MotorBus::write_parameter_f32(std::size_t i, std::uint16_t parameter,
                                    float value) {
   return send(Protocol::write_parameter_f32(motor(i), parameter, value));
+}
+bool MotorBus::store_parameters(std::size_t i) {
+  return send(Protocol::store_parameters(motor(i)));
 }
 
 bool MotorBus::receive_state(MotorState &state, std::size_t &motor_index,

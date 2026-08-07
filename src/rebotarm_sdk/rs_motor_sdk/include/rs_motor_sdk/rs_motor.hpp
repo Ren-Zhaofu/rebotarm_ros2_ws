@@ -21,6 +21,7 @@ enum class CommunicationType : std::uint8_t {
   kSetZero = 6,
   kReadParameter = 17,
   kWriteParameter = 18,
+  kStoreParameters = 22,
   kActiveReport = 24,
 };
 
@@ -92,6 +93,7 @@ public:
   static CanFrame read_parameter(const MotorConfig &motor, std::uint16_t index);
   static CanFrame write_parameter_f32(const MotorConfig &motor,
                                       std::uint16_t index, float value);
+  static CanFrame store_parameters(const MotorConfig &motor);
   static std::optional<MotorState> decode_feedback(const MotorConfig &motor,
                                                    const CanFrame &frame);
   static std::optional<ParameterResponse>
@@ -136,6 +138,7 @@ public:
   bool read_parameter(std::size_t index, std::uint16_t parameter);
   bool write_parameter_f32(std::size_t index, std::uint16_t parameter,
                            float value);
+  bool store_parameters(std::size_t index);
   bool receive_state(MotorState &state, std::size_t &motor_index,
                      std::chrono::microseconds timeout);
   bool receive_parameter(ParameterResponse &response, std::size_t &motor_index,
