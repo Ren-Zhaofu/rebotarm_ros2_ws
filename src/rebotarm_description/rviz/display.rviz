@@ -30,6 +30,18 @@ Visualization Manager:
       Show Arrows: true
       Show Axes: true
       Show Names: false
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 0.12
+      Name: Base Frame
+      Radius: 0.008
+      Reference Frame: base_footprint
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 0.1
+      Name: Gripper TCP
+      Radius: 0.006
+      Reference Frame: gripper_tcp
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
