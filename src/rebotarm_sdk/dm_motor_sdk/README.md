@@ -63,6 +63,18 @@ ros2 run rebotarm_dm_motor_sdk dm_motor_read_state can0 --watch 100
 ./scripts/motor/DM/motor_dm_read.sh --once
 ```
 
+将选中关节放到预期的 URDF 零位后，可用脚本把当前位置保存为电机软件零点。脚本会先
+检查反馈和故障状态、失能电机并确认失能，然后写入零点并复核位置：
+
+```bash
+./scripts/motor/DM/motor_dm_zero.sh --joint joint3
+./scripts/motor/DM/motor_dm_zero.sh --joints joint1,joint3,joint6
+./scripts/motor/DM/motor_dm_zero.sh --all
+```
+
+该操作会永久改变电机软件零点，必须按提示输入 `DM_ZERO` 才会执行。可先添加
+`--dry-run` 检查最终命令而不访问 CAN 总线。
+
 ## 六轴最小 jerk 回零
 
 `dm_motor_minimum_jerk_home` 是需要显式 `--execute` 门禁的真机工具，仅控制机械臂
