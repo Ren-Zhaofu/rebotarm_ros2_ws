@@ -8,7 +8,8 @@
 - 夹爪命令 CAN ID：`0x07`
 - 夹爪反馈 CAN ID：`0x07`
 - 帧类型：经典 CAN、11 位标准帧、8 字节
-- 总线波特率：由系统负责配置，SDK 不修改网络接口
+- 总线波特率：脚本默认以 `1 Mbps` 自动上线未启动的接口
+- Bus-Off 自动恢复：脚本默认配置 `restart-ms 100`
 
 例如：
 
@@ -26,7 +27,7 @@ source install/setup.bash
 
 ## 命令行使用
 
-日常调试优先使用工作空间脚本，它们会检查参数、工作空间和 SocketCAN 状态，但不会修改或重启 CAN 接口：
+日常调试优先使用工作空间脚本。它们会检查参数和工作空间；接口已经健康时保留当前配置，接口处于 DOWN、STOPPED 或 BUS-OFF 时自动按 `1 Mbps` 重新上线：
 
 ```bash
 ./scripts/gripper/omnipicker/gripper_open.sh
@@ -36,7 +37,9 @@ source install/setup.bash
 ./scripts/gripper/omnipicker/gripper_read.sh --once
 ```
 
-所有脚本均支持 `--interface`、`--can-id` 和 `--dry-run`；默认使用 `can0` 和 `0x07`。也可以通过 `OMNIPICKER_CAN_INTERFACE`、`OMNIPICKER_CAN_ID` 修改默认值。
+所有脚本均支持 `--interface`、`--can-id` 和 `--dry-run`；默认使用 `can0` 和 `0x07`。移动脚本支持 `--duration-ms`，默认以 10 ms 周期下发 1000 ms，并要求收到无故障反馈后才报告成功。
+
+可通过 `OMNIPICKER_CAN_INTERFACE`、`OMNIPICKER_CAN_ID`、`OMNIPICKER_CAN_BITRATE`、`OMNIPICKER_CAN_RESTART_MS` 和 `OMNIPICKER_COMMAND_DURATION_MS` 修改默认配置。若没有收到反馈，工具会返回失败；这通常需要检查夹爪供电、CAN_H/CAN_L、共地、终端电阻、波特率及反馈 ID。
 
 底层 ROS 2 工具用法如下。
 
@@ -55,7 +58,7 @@ ros2 run rebotarm_gripper_sdk gripper_read_state
 ros2 run rebotarm_gripper_sdk gripper_read_state can0 0x07 1000
 ```
 
-位置、速度、力度、加速度和减速度的有效范围均为 `[0.0, 1.0]`。命令工具连续发送 5 帧、间隔 10 ms，以兼容需要短时周期下发的固件；工具退出时不会自动发送归零命令，夹爪会保持目标。
+位置、速度、力度、加速度和减速度的有效范围均为 `[0.0, 1.0]`。命令工具默认以 10 ms 周期持续发送 1000 ms，并解析反馈确认设备在线；工具退出时不会自动发送归零命令，夹爪会保持目标。
 
 ## C++ 使用
 
