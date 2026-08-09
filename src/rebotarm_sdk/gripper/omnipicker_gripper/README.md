@@ -26,6 +26,20 @@ source install/setup.bash
 
 ## 命令行使用
 
+日常调试优先使用工作空间脚本，它们会检查参数、工作空间和 SocketCAN 状态，但不会修改或重启 CAN 接口：
+
+```bash
+./scripts/gripper/omnipicker/gripper_open.sh
+./scripts/gripper/omnipicker/gripper_close.sh --velocity 0.5 --force 0.6
+./scripts/gripper/omnipicker/gripper_move.sh --position 0.5 --velocity 0.6 --force 0.7
+./scripts/gripper/omnipicker/gripper_read.sh
+./scripts/gripper/omnipicker/gripper_read.sh --once
+```
+
+所有脚本均支持 `--interface`、`--can-id` 和 `--dry-run`；默认使用 `can0` 和 `0x07`。也可以通过 `OMNIPICKER_CAN_INTERFACE`、`OMNIPICKER_CAN_ID` 修改默认值。
+
+底层 ROS 2 工具用法如下。
+
 发送目标位置（默认速度和力度均为 1.0，默认 `can0` / `0x07`）：
 
 ```bash
