@@ -48,6 +48,21 @@ source install/setup.bash
 ros2 run rebotarm_dm_motor_sdk dm_motor_read_parameters can0
 ```
 
+可用状态读取工具单次查看或持续刷新机械臂六个关节的位置、速度、力矩、状态和温度。
+刷新请求同样不会使能电机或写入参数：
+
+```bash
+ros2 run rebotarm_dm_motor_sdk dm_motor_read_state can0
+ros2 run rebotarm_dm_motor_sdk dm_motor_read_state can0 --watch 100
+```
+
+在工作空间根目录也可以使用会自动检查并初始化 SocketCAN 的脚本：
+
+```bash
+./scripts/motor/DM/motor_dm_read.sh
+./scripts/motor/DM/motor_dm_read.sh --once
+```
+
 ## 六轴最小 jerk 回零
 
 `dm_motor_minimum_jerk_home` 是需要显式 `--execute` 门禁的真机工具，仅控制机械臂

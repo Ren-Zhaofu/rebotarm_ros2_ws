@@ -20,6 +20,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 add_executable(dm_motor_read_parameters tools/dm_motor_read_parameters.cpp)
 target_link_libraries(dm_motor_read_parameters ${PROJECT_NAME})
 
+add_executable(dm_motor_read_state tools/dm_motor_read_state.cpp)
+target_link_libraries(dm_motor_read_state ${PROJECT_NAME})
+
 add_executable(dm_motor_minimum_jerk_home tools/dm_motor_minimum_jerk_home.cpp)
 target_link_libraries(dm_motor_minimum_jerk_home ${PROJECT_NAME})
 
@@ -31,6 +34,7 @@ install(
   RUNTIME DESTINATION bin
 )
 install(TARGETS dm_motor_read_parameters DESTINATION lib/${PROJECT_NAME})
+install(TARGETS dm_motor_read_state DESTINATION lib/${PROJECT_NAME})
 install(TARGETS dm_motor_minimum_jerk_home DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 install(FILES README.md PROTOCOL.md DESTINATION share/${PROJECT_NAME})
