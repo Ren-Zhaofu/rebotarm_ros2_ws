@@ -3,7 +3,7 @@
 ensure_dm_can_interface() {
   local interface=$1
   local bitrate=${DM_CAN_BITRATE:-1000000}
-  local restart_ms=${DM_CAN_RESTART_MS:-100}
+  local restart_ms=${DM_CAN_RESTART_MS:-0}
   local details
   local -a privilege=()
 
@@ -46,8 +46,15 @@ ensure_dm_can_interface() {
   echo "Initializing SocketCAN $interface (classic CAN, ${bitrate} bit/s)..."
   "${privilege[@]}" ip link set dev "$interface" down
   "${privilege[@]}" ip link set dev "$interface" mtu 16
-  "${privilege[@]}" ip link set dev "$interface" type can \
-    bitrate "$bitrate" restart-ms "$restart_ms"
+  if (( restart_ms > 0 )); then
+    if ! "${privilege[@]}" ip link set dev "$interface" type can \
+      bitrate "$bitrate" restart-ms "$restart_ms"; then
+      echo "SocketCAN $interface does not support automatic Bus-Off restart; continuing without it." >&2
+      "${privilege[@]}" ip link set dev "$interface" type can bitrate "$bitrate"
+    fi
+  else
+    "${privilege[@]}" ip link set dev "$interface" type can bitrate "$bitrate"
+  fi
   "${privilege[@]}" ip link set dev "$interface" up
 
   details=$(ip -details link show dev "$interface")
