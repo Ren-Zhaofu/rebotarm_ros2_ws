@@ -9,7 +9,7 @@ set_mode(){ [[ -z $MODE ]] || { echo "Choose exactly one selection option." >&2;
 while [[ $# -gt 0 ]]; do case $1 in
   --joint) [[ $# -ge 2 ]] || exit 2; set_mode joint "$2"; shift 2;;
   --joints) [[ $# -ge 2 ]] || exit 2; set_mode joints "$2"; shift 2;;
-  --all) set_mode all; shift;;
+  -all|--all) set_mode all; shift;;
   --interface) [[ $# -ge 2 ]] || exit 2; INTERFACE=$2; shift 2;;
   --duration) [[ $# -ge 2 ]] || { echo "--duration requires a value" >&2; exit 2; }; DURATION=$2; shift 2;;
   --verbose) VERBOSE=true; shift;;
