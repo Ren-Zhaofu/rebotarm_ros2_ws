@@ -3,14 +3,65 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
-source "${SCRIPT_DIR}/gripper_common.bash"
 
 POSITION=""
 VELOCITY=1.0
 FORCE=1.0
-INTERFACE="$OMNIPICKER_DEFAULT_INTERFACE"
-CAN_ID="$OMNIPICKER_DEFAULT_CAN_ID"
+INTERFACE="${OMNIPICKER_CAN_INTERFACE:-can0}"
+CAN_ID="${OMNIPICKER_CAN_ID:-0x07}"
 DRY_RUN=false
+
+validate_interface_name() {
+  [[ $1 =~ ^[[:alnum:]_.-]+$ ]] || {
+    echo "Invalid SocketCAN interface: $1" >&2; return 2;
+  }
+}
+
+validate_can_id() {
+  local can_id=$1 numeric_id
+  [[ $can_id =~ ^(0[xX][0-9a-fA-F]+|[0-9]+)$ ]] || {
+    echo "Invalid CAN ID '$can_id'; expected an integer from 0 to 0x7FF." >&2; return 2;
+  }
+  numeric_id=$((can_id))
+  (( numeric_id >= 0 && numeric_id <= 0x7FF )) || {
+    echo "Invalid CAN ID '$can_id'; expected an integer from 0 to 0x7FF." >&2; return 2;
+  }
+}
+
+validate_unit_value() {
+  local label=$1 value=$2
+  [[ $value =~ ^([0-9]+([.][0-9]*)?|[.][0-9]+)$ ]] &&
+    awk -v value="$value" 'BEGIN { exit !(value >= 0.0 && value <= 1.0) }' || {
+      echo "$label must be a number from 0.0 to 1.0." >&2; return 2;
+    }
+}
+
+ensure_can_interface() {
+  local interface=$1 details
+  command -v ip >/dev/null 2>&1 || {
+    echo "The 'ip' command is required to inspect SocketCAN." >&2; return 2;
+  }
+  details=$(ip -details link show dev "$interface" 2>/dev/null) || {
+    echo "SocketCAN interface '$interface' does not exist. Check the CAN adapter and driver." >&2; return 1;
+  }
+  [[ $details == *"link/can"* ]] || {
+    echo "Network interface '$interface' is not a CAN interface." >&2; return 1;
+  }
+  [[ $details == *"<"*"UP"*">"* && $details != *"can state STOPPED"* && $details != *"can state BUS-OFF"* ]] || {
+    echo "SocketCAN '$interface' is not active; configure it before controlling the gripper." >&2; return 1;
+  }
+  echo "SocketCAN $interface is active; keeping its current configuration."
+}
+
+source_workspace() {
+  set +u
+  source /opt/ros/humble/setup.bash
+  if [[ ! -f "${WORKSPACE_DIR}/install/setup.bash" ]]; then
+    echo "Workspace is not built. Run ${WORKSPACE_DIR}/scripts/build.sh first." >&2; return 2
+  fi
+  source "${WORKSPACE_DIR}/install/setup.bash"
+  set -u
+}
 
 usage() {
   echo "Usage: $0 --position 0..1 [--velocity 0..1] [--force 0..1]"
@@ -32,11 +83,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n $POSITION ]] || { echo "--position is required." >&2; usage >&2; exit 2; }
-validate_omnipicker_unit_value position "$POSITION"
-validate_omnipicker_unit_value velocity "$VELOCITY"
-validate_omnipicker_unit_value force "$FORCE"
-validate_omnipicker_interface_name "$INTERFACE"
-validate_omnipicker_can_id "$CAN_ID"
+validate_unit_value position "$POSITION"
+validate_unit_value velocity "$VELOCITY"
+validate_unit_value force "$FORCE"
+validate_interface_name "$INTERFACE"
+validate_can_id "$CAN_ID"
 
 COMMAND=(ros2 run rebotarm_gripper_sdk gripper_command
   "$POSITION" "$VELOCITY" "$FORCE" "$INTERFACE" "$CAN_ID")
@@ -50,6 +101,6 @@ if [[ $DRY_RUN == true ]]; then
   exit 0
 fi
 
-ensure_omnipicker_can_interface "$INTERFACE"
-source_omnipicker_workspace "$WORKSPACE_DIR"
+ensure_can_interface "$INTERFACE"
+source_workspace
 exec "${COMMAND[@]}"
