@@ -14,12 +14,12 @@ ros2 run rs_motor_sdk rs_motor_read_state can0
 ```
 
 Persistent current-limit writes are intentionally exposed only through
-the guarded workspace script `scripts/motor/RS/motor_rs_set_current_limit.sh`.
+the guarded workspace script `scripts/motor/rs/motor_rs_set_current_limit.sh`.
 Its store frame (`0x1600FD01#0102030405060708` for joint1) was captured from
 the installed motorbridge `store_parameters()` implementation on `vcan`.
 
 ```bash
-scripts/motor/RS/motor_rs_set_current_limit.sh \
+scripts/motor/rs/motor_rs_set_current_limit.sh \
   --joint joint1 --limit 20 --store --execute
 ```
 
@@ -32,12 +32,12 @@ ros2 run rs_motor_sdk rs_motor_read_state can0 --watch 100
 也可以直接运行工作区脚本：
 
 ```bash
-scripts/motor/RS/motor_rs_read.sh
-scripts/motor/RS/motor_rs_read.sh --refresh-ms 200
-scripts/motor/RS/motor_rs_read.sh --once
+scripts/motor/rs/motor_rs_read.sh
+scripts/motor/rs/motor_rs_read.sh --refresh-ms 200
+scripts/motor/rs/motor_rs_read.sh --once
 ```
 
-All scripts under `scripts/motor/RS/` check the selected SocketCAN interface
+All scripts under `scripts/motor/rs/` check the selected SocketCAN interface
 before accessing hardware. An interface that is already active is left
 unchanged. A down, stopped, or bus-off interface is automatically configured
 for classic CAN at 1 Mbps with 100 ms bus-off restart and brought up using
@@ -49,9 +49,9 @@ a persistent calibration operation and requires both `--execute` and an
 interactive `RS_ZERO` confirmation:
 
 ```bash
-scripts/motor/RS/motor_rs_zero.sh --joint joint3 --execute
-scripts/motor/RS/motor_rs_zero.sh --joints joint1,joint3,joint6 --execute
-scripts/motor/RS/motor_rs_zero.sh --all --execute
+scripts/motor/rs/motor_rs_zero.sh --joint joint3 --execute
+scripts/motor/rs/motor_rs_zero.sh --joints joint1,joint3,joint6 --execute
+scripts/motor/rs/motor_rs_zero.sh --all --execute
 ```
 
 Move one, multiple, or all joints to their calibrated zero position with a
@@ -79,10 +79,10 @@ within tolerance for consecutive feedback cycles, so passing quickly through
 zero is not accepted as a completed home.
 
 ```bash
-scripts/motor/RS/motor_rs_home.sh --joint joint3
-scripts/motor/RS/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3
-scripts/motor/RS/motor_rs_home.sh --joint joint6 --hold
-scripts/motor/RS/motor_rs_home.sh --all --dry-run
+scripts/motor/rs/motor_rs_home.sh --joint joint3
+scripts/motor/rs/motor_rs_home.sh --joints joint1,joint3,joint6 --duration 3
+scripts/motor/rs/motor_rs_home.sh --joint joint6 --hold
+scripts/motor/rs/motor_rs_home.sh --all --dry-run
 ```
 
 With `--hold`, successfully homed joints remain enabled at zero while the
@@ -96,16 +96,16 @@ for any fault, including whether it came from command feedback or a periodic
 active-report frame:
 
 ```bash
-scripts/motor/RS/motor_rs_home.sh --all --duration 5 --verbose
+scripts/motor/rs/motor_rs_home.sh --all --duration 5 --verbose
 ```
 
 Disable selected motors and clear their active fault state, then verify that
 feedback reports fault code zero:
 
 ```bash
-scripts/motor/RS/motor_rs_clear_fault.sh --joint joint3 --execute
-scripts/motor/RS/motor_rs_clear_fault.sh --joints joint1,joint3,joint6 --execute
-scripts/motor/RS/motor_rs_clear_fault.sh --all --execute
+scripts/motor/rs/motor_rs_clear_fault.sh --joint joint3 --execute
+scripts/motor/rs/motor_rs_clear_fault.sh --joints joint1,joint3,joint6 --execute
+scripts/motor/rs/motor_rs_clear_fault.sh --all --execute
 ```
 
 The hardware plugin supplies the robot-specific mapping. For `model=rs`, the
