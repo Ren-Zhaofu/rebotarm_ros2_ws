@@ -1,0 +1,10 @@
+enabled: false
+seed: 0
+parameters:
+  link_mass_scale: [1.0, 1.0]
+  joint_damping_scale: [1.0, 1.0]
+  contact_friction_scale: [1.0, 1.0]
+  actuator_strength_scale: [1.0, 1.0]
+notes:
+  - This file is an extension contract; the baseline simulator remains deterministic.
+  - Enable ranges only after nominal physical parameters have been calibrated.

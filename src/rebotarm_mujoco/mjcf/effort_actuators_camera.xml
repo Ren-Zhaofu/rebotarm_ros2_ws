@@ -16,12 +16,13 @@
       <motor name="joint6" joint="joint6" ctrlrange="-14 14"/>
       <position name="gripper_joint1" joint="gripper_joint1" kp="100" dampratio="2" ctrlrange="0 0.05"/>
     </actuator>
-    <equality>
-      <joint joint1="gripper_joint1" joint2="gripper_joint2" polycoef="0 1 0 0 0" solref="0.005 1" solimp="0.95 0.99 0.001"/>
-    </equality>
+    <equality><joint joint1="gripper_joint1" joint2="gripper_joint2" polycoef="0 1 0 0 0" solref="0.005 1" solimp="0.95 0.99 0.001"/></equality>
     <sensor>
       <force name="wrist_force" site="gripper_tcp"/>
       <torque name="wrist_torque" site="gripper_tcp"/>
     </sensor>
   </raw_inputs>
+  <processed_inputs>
+    <camera site="wrist_camera_mujoco_frame" name="wrist_camera" fovy="58" mode="fixed" resolution="640 480"/>
+  </processed_inputs>
 </mujoco_inputs>

@@ -1,0 +1,15 @@
+status: reserved
+implemented: false
+description: Contract for a future Pinocchio model-based ros2_control controller.
+reference:
+  joints: [joint1, joint2, joint3, joint4, joint5, joint6]
+  inputs: [position, velocity, acceleration]
+command:
+  interface: effort
+  joints: [joint1, joint2, joint3, joint4, joint5, joint6]
+state:
+  required_interfaces: [position, velocity]
+safety:
+  effort_limits_source: physical_parameters_<model>.yaml
+  reject_uncalibrated_real_hardware: true
+  simulation_only_until_calibrated: true

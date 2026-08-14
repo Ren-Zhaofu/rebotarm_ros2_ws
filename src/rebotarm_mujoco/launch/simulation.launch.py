@@ -14,6 +14,9 @@ def _launch_setup(context):
     control_mode = context.launch_configurations["control_mode"]
     gui = context.launch_configurations["gui"]
     start_gripper_controller = context.launch_configurations["start_gripper_controller"] == "true"
+    sim_speed_factor = context.launch_configurations["sim_speed_factor"]
+    enable_ft_sensor = context.launch_configurations["enable_ft_sensor"]
+    enable_camera = context.launch_configurations["enable_camera"]
 
     if model not in {"rs", "dm"}:
         raise RuntimeError("model must be 'rs' or 'dm'")
@@ -28,7 +31,9 @@ def _launch_setup(context):
 
     xacro_file = bringup / "urdf" / "rebotarm_controlled.urdf.xacro"
     robot_description_xml = subprocess.check_output(
-        ["xacro", str(xacro_file), f"model:={model}", "transport:=mujoco", f"mujoco_headless:={headless}", f"control_mode:={control_mode}"],
+        ["xacro", str(xacro_file), f"model:={model}", "transport:=mujoco", f"mujoco_headless:={headless}",
+         f"control_mode:={control_mode}", f"sim_speed_factor:={sim_speed_factor}",
+         f"enable_camera:={enable_camera}", f"enable_ft_sensor:={enable_ft_sensor}"],
         text=True,
     )
     robot_description = {"robot_description": ParameterValue(robot_description_xml, value_type=str)}
@@ -36,7 +41,7 @@ def _launch_setup(context):
     controllers = str(simulation / "config" / f"controllers_{control_mode}.yaml")
     converter_args = [
         "--robot_description", robot_description_xml,
-        "--m", str(simulation / "mjcf" / f"{control_mode}_actuators.xml"),
+        "--m", str(simulation / "mjcf" / f"{control_mode}_actuators{'_camera' if enable_camera == 'true' else ''}.xml"),
         "--scene", str(simulation / "mjcf" / "worlds" / f"{world}.xml"),
         "--publish_topic", "/mujoco_robot_description",
     ]
@@ -90,5 +95,8 @@ def generate_launch_description():
         DeclareLaunchArgument("gui", default_value="true", choices=["true", "false"]),
         DeclareLaunchArgument("start_gripper_controller", default_value="true", choices=["true", "false"]),
         DeclareLaunchArgument("random_seed", default_value="0", description="Reserved deterministic environment seed"),
+        DeclareLaunchArgument("sim_speed_factor", default_value="1.0"),
+        DeclareLaunchArgument("enable_ft_sensor", default_value="true", choices=["true", "false"]),
+        DeclareLaunchArgument("enable_camera", default_value="false", choices=["true", "false"]),
         OpaqueFunction(function=_launch_setup),
     ])

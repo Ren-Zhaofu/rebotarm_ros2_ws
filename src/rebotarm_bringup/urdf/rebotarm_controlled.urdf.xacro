@@ -8,6 +8,9 @@
   <xacro:arg name="motor_enable_mask" default="0,0,0,0,0,0"/>
   <xacro:arg name="mujoco_headless" default="false"/>
   <xacro:arg name="control_mode" default="position"/>
+  <xacro:arg name="sim_speed_factor" default="1.0"/>
+  <xacro:arg name="enable_ft_sensor" default="true"/>
+  <xacro:arg name="enable_camera" default="false"/>
   <xacro:property name="model" value="$(arg model)"/>
   <xacro:property name="transport" value="$(arg transport)"/>
 
@@ -19,6 +22,27 @@
   </xacro:if>
 
   <xacro:include filename="$(find rebotarm_hardware)/ros2_control/rebotarm.ros2_control.xacro"/>
+
+  <xacro:if value="${transport == 'mujoco'}">
+    <link name="wrist_camera_link"/>
+    <joint name="wrist_camera_joint" type="fixed">
+      <parent link="gripper_tcp"/>
+      <child link="wrist_camera_link"/>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+    </joint>
+    <link name="wrist_camera_optical_frame"/>
+    <joint name="wrist_camera_optical_joint" type="fixed">
+      <parent link="wrist_camera_link"/>
+      <child link="wrist_camera_optical_frame"/>
+      <origin xyz="0 0 0" rpy="-1.570796 0 -1.570796"/>
+    </joint>
+    <link name="wrist_camera_mujoco_frame"/>
+    <joint name="wrist_camera_mujoco_joint" type="fixed">
+      <parent link="wrist_camera_optical_frame"/>
+      <child link="wrist_camera_mujoco_frame"/>
+      <origin xyz="0 0 0" rpy="3.141593 0 0"/>
+    </joint>
+  </xacro:if>
   <xacro:rebotarm_ros2_control
     model="${model}"
     transport="${transport}"
@@ -27,5 +51,8 @@
     hold_only="$(arg hold_only)"
     motor_enable_mask="$(arg motor_enable_mask)"
     mujoco_headless="$(arg mujoco_headless)"
-    control_mode="$(arg control_mode)"/>
+    control_mode="$(arg control_mode)"
+    sim_speed_factor="$(arg sim_speed_factor)"
+    enable_ft_sensor="$(arg enable_ft_sensor)"
+    enable_camera="$(arg enable_camera)"/>
 </robot>

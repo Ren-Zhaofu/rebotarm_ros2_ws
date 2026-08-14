@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:macro name="rebotarm_ros2_control"
-    params="model transport:=mock can_interface:=can0 allow_motor_enable:=false hold_only:=true motor_enable_mask:='0,0,0,0,0,0' rs_soft_start_ms:=1000 max_tracking_error:=0.2 mit_kp:='10,15,15,15,12,10' mit_kd:='0.3,0.3,0.3,0.4,0.3,0.3' mujoco_headless:=false control_mode:=position">
+    params="model transport:=mock can_interface:=can0 allow_motor_enable:=false hold_only:=true motor_enable_mask:='0,0,0,0,0,0' rs_soft_start_ms:=1000 max_tracking_error:=0.2 mit_kp:='10,15,15,15,12,10' mit_kd:='0.3,0.3,0.3,0.4,0.3,0.3' mujoco_headless:=false control_mode:=position sim_speed_factor:=1.0 enable_ft_sensor:=true enable_camera:=false">
     <ros2_control name="RebotArmSystem" type="system">
       <hardware>
         <xacro:if value="${transport == 'mujoco'}">
           <plugin>mujoco_ros2_control/MujocoSystemInterface</plugin>
           <param name="headless">${mujoco_headless}</param>
-          <param name="sim_speed_factor">1.0</param>
+          <param name="sim_speed_factor">${sim_speed_factor}</param>
         </xacro:if>
         <xacro:unless value="${transport == 'mujoco'}">
           <plugin>rebotarm_hardware/RebotArmSystem</plugin>
@@ -107,6 +107,27 @@
           <state_interface name="velocity"/>
           <state_interface name="effort"/>
         </joint>
+        <xacro:if value="${enable_ft_sensor}">
+          <sensor name="wrist_fts">
+            <param name="frame_id">gripper_tcp</param>
+            <param name="mujoco_type">fts</param>
+            <param name="mujoco_sensor_name">wrist</param>
+            <state_interface name="force.x"/>
+            <state_interface name="force.y"/>
+            <state_interface name="force.z"/>
+            <state_interface name="torque.x"/>
+            <state_interface name="torque.y"/>
+            <state_interface name="torque.z"/>
+          </sensor>
+        </xacro:if>
+        <xacro:if value="${enable_camera}">
+          <sensor name="wrist_camera">
+            <param name="frame_name">wrist_camera_optical_frame</param>
+            <param name="info_topic">/wrist_camera/color/camera_info</param>
+            <param name="image_topic">/wrist_camera/color/image_raw</param>
+            <param name="depth_topic">/wrist_camera/aligned_depth_to_color/image_raw</param>
+          </sensor>
+        </xacro:if>
       </xacro:if>
     </ros2_control>
   </xacro:macro>

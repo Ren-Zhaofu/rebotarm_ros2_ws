@@ -43,3 +43,24 @@ def test_physical_parameters_are_explicitly_uncalibrated():
         assert config["metadata"]["status"] == "uncalibrated"
         assert config["metadata"]["safety_use_allowed"] is False
         assert len(config["actuator_effort_limits"]) == 6
+
+
+def test_extension_contracts_are_safe_by_default():
+    randomization = yaml.safe_load((PACKAGE / "config" / "domain_randomization.yaml").read_text())
+    assert randomization["enabled"] is False
+    assert randomization["seed"] == 0
+    pinocchio = yaml.safe_load((PACKAGE / "config" / "pinocchio_controller_interface.yaml").read_text())
+    assert pinocchio["implemented"] is False
+    assert pinocchio["command"]["interface"] == "effort"
+    assert pinocchio["safety"]["reject_uncalibrated_real_hardware"] is True
+
+
+def test_wrist_sensor_definitions_exist_in_both_control_modes():
+    for mode in ("position", "effort"):
+        root = ET.parse(PACKAGE / "mjcf" / f"{mode}_actuators.xml").getroot()
+        names = {sensor.attrib["name"] for sensor in root.findall("./raw_inputs/sensor/*")}
+        assert names == {"wrist_force", "wrist_torque"}
+        assert root.find("./processed_inputs/camera") is None
+        camera_root = ET.parse(PACKAGE / "mjcf" / f"{mode}_actuators_camera.xml").getroot()
+        camera = camera_root.find("./processed_inputs/camera")
+        assert camera.attrib["name"] == "wrist_camera"
