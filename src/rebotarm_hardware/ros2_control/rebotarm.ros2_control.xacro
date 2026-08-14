@@ -1,12 +1,19 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:macro name="rebotarm_ros2_control"
-    params="model transport:=mock can_interface:=can0 allow_motor_enable:=false hold_only:=true motor_enable_mask:='0,0,0,0,0,0' rs_soft_start_ms:=1000 max_tracking_error:=0.2 mit_kp:='10,15,15,15,12,10' mit_kd:='0.3,0.3,0.3,0.4,0.3,0.3'">
+    params="model transport:=mock can_interface:=can0 allow_motor_enable:=false hold_only:=true motor_enable_mask:='0,0,0,0,0,0' rs_soft_start_ms:=1000 max_tracking_error:=0.2 mit_kp:='10,15,15,15,12,10' mit_kd:='0.3,0.3,0.3,0.4,0.3,0.3' mujoco_headless:=false">
     <ros2_control name="RebotArmSystem" type="system">
       <hardware>
-        <plugin>rebotarm_hardware/RebotArmSystem</plugin>
-        <param name="transport">${transport}</param>
-        <param name="model">${model}</param>
+        <xacro:if value="${transport == 'mujoco'}">
+          <plugin>mujoco_ros2_control/MujocoSystemInterface</plugin>
+          <param name="headless">${mujoco_headless}</param>
+          <param name="sim_speed_factor">1.0</param>
+        </xacro:if>
+        <xacro:unless value="${transport == 'mujoco'}">
+          <plugin>rebotarm_hardware/RebotArmSystem</plugin>
+          <param name="transport">${transport}</param>
+          <param name="model">${model}</param>
+        </xacro:unless>
         <xacro:if value="${transport == 'socketcan'}">
           <!-- Real-hardware settings are deliberately explicit. -->
           <param name="can_interface">${can_interface}</param>

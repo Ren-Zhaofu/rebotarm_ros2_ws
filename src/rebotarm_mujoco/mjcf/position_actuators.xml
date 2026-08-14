@@ -1,0 +1,23 @@
+<mujoco_inputs>
+  <raw_inputs>
+    <option timestep="0.002" integrator="implicitfast" solver="Newton" gravity="0 0 -9.81"/>
+    <default>
+      <joint damping="0.1" armature="0.01"/>
+      <geom friction="0.8 0.02 0.001" solref="0.01 1" solimp="0.9 0.95 0.001"/>
+      <default class="visual">
+        <geom group="2" contype="0" conaffinity="0"/>
+      </default>
+      <default class="collision">
+        <geom group="3" rgba="0 0 0 0"/>
+      </default>
+    </default>
+    <actuator>
+      <position name="joint1" joint="joint1" kp="200" dampratio="1" ctrlrange="-2.8 2.8"/>
+      <position name="joint2" joint="joint2" kp="200" dampratio="1" ctrlrange="-3.14 3.14"/>
+      <position name="joint3" joint="joint3" kp="160" dampratio="1" ctrlrange="-3.14 3.14"/>
+      <position name="joint4" joint="joint4" kp="100" dampratio="1" ctrlrange="-1.87 1.57"/>
+      <position name="joint5" joint="joint5" kp="80" dampratio="1" ctrlrange="-1.57 1.57"/>
+      <position name="joint6" joint="joint6" kp="50" dampratio="1" ctrlrange="-3.14 3.14"/>
+    </actuator>
+  </raw_inputs>
+</mujoco_inputs>

@@ -1,0 +1,17 @@
+<mujoco model="rebotarm_workcell">
+  <statistic center="0.25 0 0.35" extent="1.0"/>
+  <visual>
+    <headlight diffuse="0.7 0.7 0.7" ambient="0.25 0.25 0.25" specular="0.1 0.1 0.1"/>
+    <global azimuth="135" elevation="-25"/>
+  </visual>
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.35 0.45 0.6" rgb2="0.05 0.05 0.08" width="512" height="3072"/>
+    <material name="floor" rgba="0.2 0.2 0.22 1"/>
+    <material name="table" rgba="0.45 0.35 0.25 1"/>
+  </asset>
+  <worldbody>
+    <light pos="0 -1 2" dir="0 0 -1" directional="true"/>
+    <geom name="floor" type="plane" size="2 2 0.02" material="floor" friction="0.9 0.02 0.001"/>
+    <geom name="worktable" type="box" pos="0.45 0 0.18" size="0.35 0.45 0.02" material="table" friction="0.9 0.02 0.001"/>
+  </worldbody>
+</mujoco>
