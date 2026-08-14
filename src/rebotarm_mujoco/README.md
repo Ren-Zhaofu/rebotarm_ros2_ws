@@ -2,10 +2,18 @@
 
 reBotArm 的 MuJoCo、ros2_control 与 MoveIt 2 集成包，同时支持 RS 和 DM。
 
-## 启动
+## 快速启动
 
 ```bash
-# MuJoCo GUI，默认 position 控制
+# 首次使用：安装官方 URDF→MJCF 转换依赖
+source /opt/ros/humble/setup.bash
+ros2 run mujoco_ros2_control robot_description_to_mjcf.sh --install-only
+
+# 编译并加载工作空间
+./scripts/build.sh
+source install/setup.bash
+
+# MuJoCo GUI，默认启动六轴 position 控制
 ros2 launch rebotarm_mujoco simulation.launch.py model:=rs world:=empty
 
 # 无界面 effort/PID；参数未经实机标定
@@ -13,6 +21,15 @@ ros2 launch rebotarm_mujoco headless_sim.launch.py model:=dm control_mode:=effor
 
 # MuJoCo、MoveIt 2 和 RViz
 ros2 launch rebotarm_mujoco moveit_sim.launch.py model:=rs world:=workcell
+```
+
+夹爪控制器是可选功能，默认关闭，因此未安装夹爪插件时六轴仿真仍可启动。
+需要夹爪时：
+
+```bash
+sudo apt install ros-humble-gripper-controllers
+ros2 launch rebotarm_mujoco simulation.launch.py model:=rs world:=workcell \
+  start_gripper_controller:=true
 ```
 
 主要参数：
@@ -23,11 +40,13 @@ ros2 launch rebotarm_mujoco moveit_sim.launch.py model:=rs world:=workcell
 | `world` | `empty` | `empty` 或带桌面及方块的 `workcell` |
 | `control_mode` | `position` | `position` 或未标定的 `effort` |
 | `gui` | `true` | 是否显示 MuJoCo 窗口 |
+| `start_gripper_controller` | `false` | 是否启动可选夹爪控制器 |
 | `enable_camera` | `false` | 发布腕部 RGB-D 数据；headless批处理保持关闭 |
 | `sim_speed_factor` | `1.0` | MuJoCo 相对实时速度 |
 | `random_seed` | `0` | 确定性运行契约；当前场景无随机采样 |
 
-首次运行官方 URDF→MJCF 转换器时，会在 ROS home 下建立独立 Python 虚拟环境。
+首次安装命令会在 ROS home 下建立独立 Python 虚拟环境，需要联网。
+建议在启动仿真前单独执行，避免把依赖下载误认为仿真卡死。
 
 ## 仿真接口
 
@@ -40,7 +59,7 @@ ros2 launch rebotarm_mujoco moveit_sim.launch.py model:=rs world:=workcell
 - 腕部六维力/力矩：ros2_control 传感器 `wrist_fts`
 - 可选相机：`/wrist_camera/color/image_raw`、camera info 和对齐深度图
 
-安装完整控制器运行依赖：
+安装完整的可选控制器运行依赖：
 
 ```bash
 sudo apt install ros-humble-gripper-controllers ros-humble-force-torque-sensor-broadcaster

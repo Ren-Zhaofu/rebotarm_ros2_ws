@@ -64,3 +64,16 @@ def test_wrist_sensor_definitions_exist_in_both_control_modes():
         camera_root = ET.parse(PACKAGE / "mjcf" / f"{mode}_actuators_camera.xml").getroot()
         camera = camera_root.find("./processed_inputs/camera")
         assert camera.attrib["name"] == "wrist_camera"
+
+
+def test_optional_gripper_controller_is_disabled_by_default():
+    for launch_file in ("simulation.launch.py", "headless_sim.launch.py", "moveit_sim.launch.py"):
+        source = (PACKAGE / "launch" / launch_file).read_text()
+        declaration = source.split('DeclareLaunchArgument("start_gripper_controller"', 1)[1]
+        assert 'default_value="false"' in declaration.split(")", 1)[0]
+
+
+def test_gripper_dependency_failure_has_install_guidance():
+    source = (PACKAGE / "launch" / "simulation.launch.py").read_text()
+    assert 'get_package_prefix("gripper_controllers")' in source
+    assert "sudo apt install ros-humble-gripper-controllers" in source

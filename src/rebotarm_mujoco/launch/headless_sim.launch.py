@@ -26,7 +26,7 @@ def generate_launch_description():
         DeclareLaunchArgument("random_seed", default_value="0"),
         DeclareLaunchArgument("enable_ft_sensor", default_value="true", choices=["true", "false"]),
         DeclareLaunchArgument("enable_camera", default_value="false", choices=["true", "false"]),
-        DeclareLaunchArgument("start_gripper_controller", default_value="true", choices=["true", "false"]),
+        DeclareLaunchArgument("start_gripper_controller", default_value="false", choices=["true", "false"]),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(str(package / "launch" / "simulation.launch.py")),
             launch_arguments={

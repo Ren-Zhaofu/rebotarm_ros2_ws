@@ -1,7 +1,11 @@
 import subprocess
 from pathlib import Path
 
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import (
+    PackageNotFoundError,
+    get_package_prefix,
+    get_package_share_directory,
+)
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, Shutdown, TimerAction
 from launch_ros.actions import Node
@@ -17,6 +21,15 @@ def _launch_setup(context):
     sim_speed_factor = context.launch_configurations["sim_speed_factor"]
     enable_ft_sensor = context.launch_configurations["enable_ft_sensor"]
     enable_camera = context.launch_configurations["enable_camera"]
+
+    if start_gripper_controller:
+        try:
+            get_package_prefix("gripper_controllers")
+        except PackageNotFoundError as exc:
+            raise RuntimeError(
+                "start_gripper_controller:=true requires ros-humble-gripper-controllers; "
+                "install it with 'sudo apt install ros-humble-gripper-controllers'"
+            ) from exc
 
     if model not in {"rs", "dm"}:
         raise RuntimeError("model must be 'rs' or 'dm'")
@@ -93,7 +106,8 @@ def generate_launch_description():
         DeclareLaunchArgument("world", default_value="empty", choices=["empty", "workcell"]),
         DeclareLaunchArgument("control_mode", default_value="position", choices=["position", "effort"]),
         DeclareLaunchArgument("gui", default_value="true", choices=["true", "false"]),
-        DeclareLaunchArgument("start_gripper_controller", default_value="true", choices=["true", "false"]),
+        DeclareLaunchArgument("start_gripper_controller", default_value="false", choices=["true", "false"],
+                              description="Start the optional gripper action controller"),
         DeclareLaunchArgument("random_seed", default_value="0", description="Reserved deterministic environment seed"),
         DeclareLaunchArgument("sim_speed_factor", default_value="1.0"),
         DeclareLaunchArgument("enable_ft_sensor", default_value="true", choices=["true", "false"]),

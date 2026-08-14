@@ -25,7 +25,7 @@ def generate_launch_description():
         DeclareLaunchArgument("control_mode", default_value="position", choices=["position", "effort"]),
         DeclareLaunchArgument("gui", default_value="true", choices=["true", "false"]),
         DeclareLaunchArgument("rviz", default_value="true", choices=["true", "false"]),
-        DeclareLaunchArgument("start_gripper_controller", default_value="true", choices=["true", "false"]),
+        DeclareLaunchArgument("start_gripper_controller", default_value="false", choices=["true", "false"]),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(str(mujoco / "launch" / "simulation.launch.py")),
             launch_arguments={"model": model, "world": world, "control_mode": control_mode, "gui": gui,
