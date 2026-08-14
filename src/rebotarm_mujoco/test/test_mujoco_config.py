@@ -23,4 +23,15 @@ def test_position_controller_covers_six_arm_joints():
 def test_position_actuators_cover_six_arm_joints():
     root = ET.parse(PACKAGE / "mjcf" / "position_actuators.xml").getroot()
     actuators = root.findall("./raw_inputs/actuator/position")
-    assert [actuator.attrib["joint"] for actuator in actuators] == [f"joint{i}" for i in range(1, 7)]
+    assert [actuator.attrib["joint"] for actuator in actuators[:6]] == [f"joint{i}" for i in range(1, 7)]
+    assert actuators[-1].attrib["joint"] == "gripper_joint1"
+
+
+def test_effort_controller_and_actuators_match():
+    config = yaml.safe_load((PACKAGE / "config" / "controllers_effort.yaml").read_text())
+    params = config["arm_controller"]["ros__parameters"]
+    assert params["command_interfaces"] == ["effort"]
+    assert set(params["gains"]) == {f"joint{i}" for i in range(1, 7)}
+    root = ET.parse(PACKAGE / "mjcf" / "effort_actuators.xml").getroot()
+    motors = root.findall("./raw_inputs/actuator/motor")
+    assert [motor.attrib["joint"] for motor in motors] == [f"joint{i}" for i in range(1, 7)]

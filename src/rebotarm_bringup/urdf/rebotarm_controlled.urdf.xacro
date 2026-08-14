@@ -7,6 +7,7 @@
   <xacro:arg name="hold_only" default="true"/>
   <xacro:arg name="motor_enable_mask" default="0,0,0,0,0,0"/>
   <xacro:arg name="mujoco_headless" default="false"/>
+  <xacro:arg name="control_mode" default="position"/>
   <xacro:property name="model" value="$(arg model)"/>
   <xacro:property name="transport" value="$(arg transport)"/>
 
@@ -25,5 +26,6 @@
     allow_motor_enable="$(arg allow_motor_enable)"
     hold_only="$(arg hold_only)"
     motor_enable_mask="$(arg motor_enable_mask)"
-    mujoco_headless="$(arg mujoco_headless)"/>
+    mujoco_headless="$(arg mujoco_headless)"
+    control_mode="$(arg control_mode)"/>
 </robot>
