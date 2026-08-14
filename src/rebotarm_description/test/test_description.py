@@ -108,6 +108,13 @@ def test_model_structure_and_resources(model):
         assert filename.startswith(PACKAGE_URI)
         assert (PACKAGE_ROOT / filename.removeprefix(PACKAGE_URI)).is_file()
 
+    collision_meshes = root.findall(".//collision/geometry/mesh")
+    collision_boxes = root.findall(".//collision/geometry/box")
+    assert not collision_meshes
+    assert len(collision_boxes) == 10
+    for box in collision_boxes:
+        assert all(float(value) > 0 for value in box.attrib["size"].split())
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".urdf") as urdf_file:
         urdf_file.write(description)
         urdf_file.flush()

@@ -35,3 +35,11 @@ def test_effort_controller_and_actuators_match():
     root = ET.parse(PACKAGE / "mjcf" / "effort_actuators.xml").getroot()
     motors = root.findall("./raw_inputs/actuator/motor")
     assert [motor.attrib["joint"] for motor in motors] == [f"joint{i}" for i in range(1, 7)]
+
+
+def test_physical_parameters_are_explicitly_uncalibrated():
+    for model in ("rs", "dm"):
+        config = yaml.safe_load((PACKAGE / "config" / f"physical_parameters_{model}.yaml").read_text())
+        assert config["metadata"]["status"] == "uncalibrated"
+        assert config["metadata"]["safety_use_allowed"] is False
+        assert len(config["actuator_effort_limits"]) == 6

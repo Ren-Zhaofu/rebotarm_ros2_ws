@@ -1,0 +1,21 @@
+metadata:
+  model: dm
+  status: uncalibrated
+  source: CAD-exported URDF and provisional simulation tuning
+  safety_use_allowed: false
+  required_validation: [mass, center_of_mass, inertia, friction, damping, torque_limits, velocity_limits, tcp]
+simulation:
+  joint_damping: 0.15
+  armature: 0.01
+  contact_friction: [0.8, 0.02, 0.001]
+actuator_effort_limits: {joint1: 36.0, joint2: 36.0, joint3: 36.0, joint4: 14.0, joint5: 14.0, joint6: 14.0}
+controller_gains:
+  joint1: {p: 120.0, d: 12.0}
+  joint2: {p: 140.0, d: 14.0}
+  joint3: {p: 110.0, d: 11.0}
+  joint4: {p: 55.0, d: 5.0}
+  joint5: {p: 35.0, d: 3.5}
+  joint6: {p: 20.0, d: 2.0}
+tcp:
+  status: uncalibrated
+  xyz: [-0.0443, 0.0, 0.0]

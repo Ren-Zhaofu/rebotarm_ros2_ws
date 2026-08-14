@@ -36,11 +36,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0 0 0.04132"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/base_link.STL" />
+        <box size="0.14 0.2 0.08265" />
       </geometry>
     </collision>
   </link>
@@ -76,11 +75,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0.00507 0 0.03841"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/link1.STL" />
+        <box size="0.08698 0.07725 0.09102" />
       </geometry>
     </collision>
   </link>
@@ -134,11 +132,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="-0.132 0 -0.03163"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/link2.STL" />
+        <box size="0.321 0.057 0.06735" />
       </geometry>
     </collision>
   </link>
@@ -192,11 +189,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0.12221 -0.03 -0.03112"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/link3.STL" />
+        <box size="0.29778 0.105 0.08025" />
       </geometry>
     </collision>
   </link>
@@ -250,11 +246,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0.04486 -0.03004 -0.03"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/link4.STL" />
+        <box size="0.14579 0.11591 0.06676" />
       </geometry>
     </collision>
   </link>
@@ -308,11 +303,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="-0.00281 0 0.03802"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/link5.STL" />
+        <box size="0.07 0.077 0.08004" />
       </geometry>
     </collision>
   </link>
@@ -366,11 +360,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="0 0 0.00425"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/link6.STL" />
+        <box size="0.0568 0.0568 0.0095" />
       </geometry>
     </collision>
   </link>
@@ -424,11 +417,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="-0.11196 0 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/gripper_link.STL" />
+        <box size="0.0775 0.18407 0.077" />
       </geometry>
     </collision>
   </link>
@@ -477,11 +469,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="-0.01217 -0.00221 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/gripper_left.STL" />
+        <box size="0.0929 0.08861 0.03921" />
       </geometry>
     </collision>
   </link>
@@ -535,11 +526,10 @@
     </visual>
     <collision>
       <origin
-        xyz="0 0 0"
+        xyz="-0.01217 0.00221 0"
         rpy="0 0 0" />
       <geometry>
-        <mesh
-          filename="package://rebotarm_description/urdf/dm/meshes/gripper_right.STL" />
+        <box size="0.0929 0.08861 0.03921" />
       </geometry>
     </collision>
   </link>
