@@ -28,3 +28,6 @@ def test_rate_limiter_bounds_every_step():
 def test_launch_files_exist():
     assert (PACKAGE / "launch" / "feedback_twin.launch.py").exists()
     assert (PACKAGE / "launch" / "host_sim.launch.py").exists()
+    assert (
+        PACKAGE / "rebotarm_digital_twin" / "joint_control_gui.py"
+    ).exists()

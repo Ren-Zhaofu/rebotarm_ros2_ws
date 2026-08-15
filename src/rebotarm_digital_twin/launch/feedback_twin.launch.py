@@ -50,9 +50,8 @@ def generate_launch_description():
         Node(package="rebotarm_digital_twin", executable="state_mirror.py", output="screen"),
         Node(package="rebotarm_digital_twin", executable="mode_arbiter.py", output="screen"),
         Node(
-            package="joint_state_publisher_gui",
-            executable="joint_state_publisher_gui",
-            remappings=[("joint_states", "/host/raw_joint_states")],
+            package="rebotarm_digital_twin",
+            executable="joint_control_gui.py",
             condition=IfCondition(allow_motor_enable),
             output="screen",
         ),

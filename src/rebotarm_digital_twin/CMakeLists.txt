@@ -7,6 +7,7 @@ find_package(ament_cmake_python REQUIRED)
 ament_python_install_package(rebotarm_digital_twin)
 
 install(PROGRAMS
+  rebotarm_digital_twin/joint_control_gui.py
   rebotarm_digital_twin/state_mirror.py
   rebotarm_digital_twin/target_limiter.py
   rebotarm_digital_twin/target_to_trajectory.py

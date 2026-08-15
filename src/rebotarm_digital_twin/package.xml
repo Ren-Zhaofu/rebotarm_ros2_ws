@@ -19,7 +19,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
   <exec_depend>trajectory_msgs</exec_depend>
-  <exec_depend>joint_state_publisher_gui</exec_depend>
+  <exec_depend>python3-pyqt5</exec_depend>
   <exec_depend>rebotarm_bringup</exec_depend>
   <exec_depend>rebotarm_description</exec_depend>
   <exec_depend>rebotarm_mujoco</exec_depend>

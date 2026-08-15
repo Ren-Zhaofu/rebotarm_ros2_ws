@@ -24,9 +24,8 @@ def generate_launch_description():
             }.items(),
         ),
         Node(
-            package="joint_state_publisher_gui",
-            executable="joint_state_publisher_gui",
-            remappings=[("joint_states", "/host/raw_joint_states")],
+            package="rebotarm_digital_twin",
+            executable="joint_control_gui.py",
             output="screen",
         ),
         Node(package="rebotarm_digital_twin", executable="target_limiter.py", output="screen"),
