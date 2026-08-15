@@ -7,6 +7,9 @@ WORKSPACE_DIR="$(cd -- "${SCRIPT_DIR}/../../.." && pwd)"
 POSITION=""
 VELOCITY=1.0
 FORCE=1.0
+CYCLE=false
+CYCLES=3
+INTERVAL_MS=1000
 INTERFACE="${OMNIPICKER_CAN_INTERFACE:-can0}"
 CAN_ID="${OMNIPICKER_CAN_ID:-0x07}"
 DURATION_MS="${OMNIPICKER_COMMAND_DURATION_MS:-1000}"
@@ -104,14 +107,20 @@ source_workspace() {
 }
 
 usage() {
-  echo "Usage: $0 --position 0..1 [--velocity 0..1] [--force 0..1]"
-  echo "          [--interface can0] [--can-id 0x07] [--duration-ms 1000] [--dry-run]"
+  echo "Usage: $0 --position 0..1 [options]"
+  echo "       $0 --cycle [--cycles 3] [--interval-ms 1000] [options]"
+  echo "Options: --velocity 0..1 --force 0..1 --interface can0 --can-id 0x07"
+  echo "         --duration-ms 1000 --dry-run"
   echo "Send an Omnipicker target. Position 0 is closed and 1 is open."
+  echo "Cycle mode alternates open and closed; --cycles 0 runs until interrupted."
 }
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --position) [[ $# -ge 2 ]] || { echo "--position requires a value" >&2; exit 2; }; POSITION=$2; shift 2 ;;
+    --cycle) CYCLE=true; shift ;;
+    --cycles) [[ $# -ge 2 ]] || { echo "--cycles requires a value" >&2; exit 2; }; CYCLES=$2; shift 2 ;;
+    --interval-ms) [[ $# -ge 2 ]] || { echo "--interval-ms requires a value" >&2; exit 2; }; INTERVAL_MS=$2; shift 2 ;;
     --velocity) [[ $# -ge 2 ]] || { echo "--velocity requires a value" >&2; exit 2; }; VELOCITY=$2; shift 2 ;;
     --force) [[ $# -ge 2 ]] || { echo "--force requires a value" >&2; exit 2; }; FORCE=$2; shift 2 ;;
     --interface) [[ $# -ge 2 ]] || { echo "--interface requires a value" >&2; exit 2; }; INTERFACE=$2; shift 2 ;;
@@ -123,8 +132,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n $POSITION ]] || { echo "--position is required." >&2; usage >&2; exit 2; }
-validate_unit_value position "$POSITION"
+if [[ $CYCLE == true ]]; then
+  [[ -z $POSITION ]] || {
+    echo "--position cannot be combined with --cycle." >&2
+    exit 2
+  }
+else
+  [[ -n $POSITION ]] || { echo "--position or --cycle is required." >&2; usage >&2; exit 2; }
+  validate_unit_value position "$POSITION"
+fi
 validate_unit_value velocity "$VELOCITY"
 validate_unit_value force "$FORCE"
 validate_interface_name "$INTERFACE"
@@ -133,19 +149,66 @@ validate_can_id "$CAN_ID"
   echo "duration-ms must be an integer from 100 to 60000." >&2
   exit 2
 }
+[[ $CYCLES =~ ^[0-9]+$ ]] && (( CYCLES <= 10000 )) || {
+  echo "cycles must be an integer from 0 to 10000; 0 means continuous." >&2
+  exit 2
+}
+[[ $INTERVAL_MS =~ ^[0-9]+$ ]] && (( INTERVAL_MS <= 60000 )) || {
+  echo "interval-ms must be an integer from 0 to 60000." >&2
+  exit 2
+}
 
-COMMAND=(ros2 run rebotarm_gripper_sdk gripper_command
-  "$POSITION" "$VELOCITY" "$FORCE" "$INTERFACE" "$CAN_ID" "$DURATION_MS")
+run_target() {
+  local position=$1
+  local -a command=(ros2 run rebotarm_gripper_sdk gripper_command
+    "$position" "$VELOCITY" "$FORCE" "$INTERFACE" "$CAN_ID" "$DURATION_MS")
 
-printf 'Omnipicker target: position=%s velocity=%s force=%s interface=%s can_id=%s duration=%s ms\n' \
-  "$POSITION" "$VELOCITY" "$FORCE" "$INTERFACE" "$CAN_ID" "$DURATION_MS"
+  printf 'Omnipicker target: position=%s velocity=%s force=%s interface=%s can_id=%s duration=%s ms\n' \
+    "$position" "$VELOCITY" "$FORCE" "$INTERFACE" "$CAN_ID" "$DURATION_MS"
+  if [[ $DRY_RUN == true ]]; then
+    printf 'Dry run; no CAN command was sent: '
+    printf '%q ' "${command[@]}"
+    printf '\n'
+    return
+  fi
+  "${command[@]}"
+}
+
 if [[ $DRY_RUN == true ]]; then
-  printf 'Dry run; no CAN command was sent: '
-  printf '%q ' "${COMMAND[@]}"
-  printf '\n'
+  if [[ $CYCLE == true ]]; then
+    printf 'Cycle preview: cycles=%s interval=%s ms (open, then close)\n' "$CYCLES" "$INTERVAL_MS"
+    run_target 1.0
+    run_target 0.0
+  else
+    run_target "$POSITION"
+  fi
   exit 0
 fi
 
 ensure_can_interface "$INTERFACE"
 source_workspace
-exec "${COMMAND[@]}"
+
+if [[ $CYCLE == false ]]; then
+  run_target "$POSITION"
+  exit 0
+fi
+
+sleep_seconds=$(awk -v milliseconds="$INTERVAL_MS" 'BEGIN { printf "%.3f", milliseconds / 1000 }')
+trap 'printf "\nCycle stopped.\n"; exit 130' INT TERM
+printf 'Cycle mode: cycles=%s interval=%s ms. Press Ctrl+C to stop.\n' "$CYCLES" "$INTERVAL_MS"
+
+completed=0
+while (( CYCLES == 0 || completed < CYCLES )); do
+  printf 'Cycle %d: opening.\n' "$((completed + 1))"
+  run_target 1.0
+  if (( INTERVAL_MS > 0 )); then
+    sleep "$sleep_seconds"
+  fi
+
+  printf 'Cycle %d: closing.\n' "$((completed + 1))"
+  run_target 0.0
+  completed=$((completed + 1))
+  if (( INTERVAL_MS > 0 && (CYCLES == 0 || completed < CYCLES) )); then
+    sleep "$sleep_seconds"
+  fi
+done
