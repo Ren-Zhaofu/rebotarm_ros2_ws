@@ -13,16 +13,6 @@ parameters:
 ros2 run rs_motor_sdk rs_motor_read_state can0
 ```
 
-Persistent current-limit writes are intentionally exposed only through
-the guarded workspace script `scripts/motor/rs/motor_rs_set_current_limit.sh`.
-Its store frame (`0x1600FD01#0102030405060708` for joint1) was captured from
-the installed motorbridge `store_parameters()` implementation on `vcan`.
-
-```bash
-scripts/motor/rs/motor_rs_set_current_limit.sh \
-  --joint joint1 --limit 20 --store --execute
-```
-
 Continuously refresh the state table every 100 ms until `Ctrl+C`:
 
 ```bash
