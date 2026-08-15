@@ -31,3 +31,14 @@ def test_launch_files_exist():
     assert (
         PACKAGE / "rebotarm_digital_twin" / "joint_control_gui.py"
     ).exists()
+
+
+def test_ros_python_nodes_have_executable_entrypoints():
+    for filename in (
+        "target_limiter.py",
+        "target_to_trajectory.py",
+        "mode_arbiter.py",
+        "state_mirror.py",
+    ):
+        source = (PACKAGE / "rebotarm_digital_twin" / filename).read_text()
+        assert "if __name__ == \"__main__\":" in source

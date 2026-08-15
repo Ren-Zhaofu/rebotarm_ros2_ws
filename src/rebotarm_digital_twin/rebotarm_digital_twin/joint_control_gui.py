@@ -154,7 +154,10 @@ class JointControlWindow(QMainWindow):
         header.addWidget(status_dot)
         outer.addLayout(header)
 
-        initial = tuple((low + high) / 2.0 for low, high in zip(LOWER_LIMITS, UPPER_LIMITS))
+        initial = tuple(
+            max(low, min(high, 0.0))
+            for low, high in zip(LOWER_LIMITS, UPPER_LIMITS)
+        )
         self.rows = []
         for index, (lower, upper, value) in enumerate(
             zip(LOWER_LIMITS, UPPER_LIMITS, initial)
@@ -176,6 +179,9 @@ class JointControlWindow(QMainWindow):
 
         self.setStyleSheet(STYLESHEET)
         QTimer.singleShot(0, self.publish)
+        self.publish_timer = QTimer(self)
+        self.publish_timer.timeout.connect(self.publish)
+        self.publish_timer.start(100)
 
     def publish(self):
         positions = tuple(row.value() for row in self.rows)
