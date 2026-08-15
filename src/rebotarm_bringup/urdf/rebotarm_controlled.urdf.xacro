@@ -5,6 +5,7 @@
   <xacro:arg name="can_interface" default="can0"/>
   <xacro:arg name="allow_motor_enable" default="false"/>
   <xacro:arg name="hold_only" default="true"/>
+  <xacro:arg name="enable_on_controller_start" default="false"/>
   <xacro:arg name="motor_enable_mask" default="0,0,0,0,0,0"/>
   <xacro:arg name="mujoco_headless" default="false"/>
   <xacro:arg name="control_mode" default="position"/>
@@ -49,6 +50,7 @@
     can_interface="$(arg can_interface)"
     allow_motor_enable="$(arg allow_motor_enable)"
     hold_only="$(arg hold_only)"
+    enable_on_controller_start="$(arg enable_on_controller_start)"
     motor_enable_mask="$(arg motor_enable_mask)"
     mujoco_headless="$(arg mujoco_headless)"
     control_mode="$(arg control_mode)"

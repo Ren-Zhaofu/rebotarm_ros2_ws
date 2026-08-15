@@ -177,6 +177,7 @@ RebotArmSystem::on_init(const hardware_interface::HardwareInfo &info) {
   enable_mask_.fill(false);
   motor_enabled_.fill(false);
   feedback_states_.fill(0);
+  command_interfaces_active_ = false;
   rs_reporting_ = false;
   active_ = false;
 
@@ -209,6 +210,9 @@ bool RebotArmSystem::configure_socketcan() {
   allow_motor_enable_ = enable != nullptr && parameter_is_true(*enable);
   const auto hold_only = get("hold_only");
   hold_only_ = hold_only != nullptr && parameter_is_true(*hold_only);
+  const auto deferred_enable = get("enable_on_controller_start");
+  enable_on_controller_start_ =
+      deferred_enable != nullptr && parameter_is_true(*deferred_enable);
 
   const auto parse_double_array = [&](const char *name, auto &target) {
     const auto value = get(name);
@@ -817,43 +821,12 @@ RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
       }
     }
 
-    if (model_ == "rs") {
-      if (!activate_rs_motors()) {
-        disable_motors();
-        return CallbackReturn::ERROR;
-      }
-    } else {
-      if (!send_position_velocity_commands()) {
-        disable_motors();
-        return CallbackReturn::ERROR;
-      }
-      feedback_seen_.fill(false);
-      if (!request_feedback() || !await_feedback(false)) {
-        disable_motors();
-        return CallbackReturn::ERROR;
-      }
-
-      feedback_seen_.fill(false);
-      for (std::size_t i = 0; i < kJointCount; ++i) {
-        if (!enable_mask_[i]) {
-          continue;
-        }
-        if (!bus_->enable(i)) {
-          RCLCPP_ERROR(kLogger, "Motor enable failed for joint%zu: %s", i + 1,
-                       bus_->last_error().c_str());
-          motor_enabled_[i] = true;
-          disable_motors();
-          return CallbackReturn::ERROR;
-        }
-        motor_enabled_[i] = true;
-      }
-      if (!request_feedback() || !await_feedback(true) ||
-          !send_position_velocity_commands()) {
-        RCLCPP_ERROR(kLogger,
-                     "DM motor enable or initial hold acknowledgement failed");
-        disable_motors();
-        return CallbackReturn::ERROR;
-      }
+    if (!enable_on_controller_start_ && !enable_motors()) {
+      disable_motors();
+      return CallbackReturn::ERROR;
+    }
+    if (enable_on_controller_start_) {
+      RCLCPP_INFO(kLogger, "Deferred motor enable armed; waiting for controller start");
     }
     RCLCPP_INFO(
         kLogger,
@@ -868,6 +841,69 @@ RebotArmSystem::on_activate(const rclcpp_lifecycle::State &) {
   return CallbackReturn::SUCCESS;
 }
 
+bool RebotArmSystem::enable_motors() {
+  if (transport_ != "socketcan" || !allow_motor_enable_) {
+    return true;
+  }
+  if (model_ == "rs") {
+    return activate_rs_motors();
+  }
+  if (!send_position_velocity_commands()) {
+    return false;
+  }
+  feedback_seen_.fill(false);
+  if (!request_feedback() || !await_feedback(false)) {
+    return false;
+  }
+  feedback_seen_.fill(false);
+  for (std::size_t i = 0; i < kJointCount; ++i) {
+    if (!enable_mask_[i]) {
+      continue;
+    }
+    if (!bus_->enable(i)) {
+      RCLCPP_ERROR(kLogger, "Motor enable failed for joint%zu: %s", i + 1,
+                   bus_->last_error().c_str());
+      motor_enabled_[i] = true;
+      return false;
+    }
+    motor_enabled_[i] = true;
+  }
+  return request_feedback() && await_feedback(true) &&
+         send_position_velocity_commands();
+}
+
+hardware_interface::return_type RebotArmSystem::prepare_command_mode_switch(
+    const std::vector<std::string> &, const std::vector<std::string> &) {
+  return hardware_interface::return_type::OK;
+}
+
+hardware_interface::return_type RebotArmSystem::perform_command_mode_switch(
+    const std::vector<std::string> &start_interfaces,
+    const std::vector<std::string> &stop_interfaces) {
+  if (transport_ != "socketcan" || !enable_on_controller_start_) {
+    return hardware_interface::return_type::OK;
+  }
+  const auto is_position = [](const std::string &name) {
+    return name.size() >= 9 &&
+           name.compare(name.size() - 9, 9, "/position") == 0;
+  };
+  if (std::any_of(stop_interfaces.begin(), stop_interfaces.end(), is_position)) {
+    command_interfaces_active_ = false;
+    disable_motors(false);
+  }
+  if (std::any_of(start_interfaces.begin(), start_interfaces.end(), is_position)) {
+    position_commands_ = position_states_;
+    hold_position_commands_ = position_states_;
+    last_sent_commands_ = position_states_;
+    if (!enable_motors()) {
+      disable_motors();
+      return hardware_interface::return_type::ERROR;
+    }
+    command_interfaces_active_ = true;
+  }
+  return hardware_interface::return_type::OK;
+}
+
 RebotArmSystem::CallbackReturn
 RebotArmSystem::on_deactivate(const rclcpp_lifecycle::State &) {
   active_ = false;
@@ -877,7 +913,7 @@ RebotArmSystem::on_deactivate(const rclcpp_lifecycle::State &) {
   return CallbackReturn::SUCCESS;
 }
 
-void RebotArmSystem::disable_motors() {
+void RebotArmSystem::disable_motors(bool disconnect) {
   const bool connected = model_ == "dm" ? (bus_ && bus_->connected())
                                         : (rs_bus_ && rs_bus_->connected());
   if (!connected) {
@@ -911,7 +947,7 @@ void RebotArmSystem::disable_motors() {
                   "joints");
     }
   }
-  if (model_ == "rs") {
+  if (model_ == "rs" && disconnect) {
     for (std::size_t i = 0; i < kJointCount; ++i) {
       if (!rs_bus_->set_active_report(i, false)) {
         RCLCPP_WARN(kLogger, "Failed to stop RS feedback on joint%zu: %s",
@@ -921,7 +957,9 @@ void RebotArmSystem::disable_motors() {
     rs_reporting_ = false;
   }
   motor_enabled_.fill(false);
-  model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
+  if (disconnect) {
+    model_ == "dm" ? bus_->disconnect() : rs_bus_->disconnect();
+  }
 }
 
 hardware_interface::return_type RebotArmSystem::read(const rclcpp::Time &,
@@ -964,6 +1002,10 @@ hardware_interface::return_type RebotArmSystem::read(const rclcpp::Time &,
 hardware_interface::return_type
 RebotArmSystem::write(const rclcpp::Time &, const rclcpp::Duration &) {
   if (transport_ == "socketcan" && !allow_motor_enable_) {
+    return hardware_interface::return_type::OK;
+  }
+  if (transport_ == "socketcan" && enable_on_controller_start_ &&
+      !command_interfaces_active_) {
     return hardware_interface::return_type::OK;
   }
   if (transport_ == "socketcan" && hold_only_) {

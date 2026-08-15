@@ -59,6 +59,7 @@ void add_socketcan_parameters(hardware_interface::HardwareInfo &info,
   info.hardware_parameters["can_interface"] = "vcan0";
   info.hardware_parameters["allow_motor_enable"] =
       allow_enable ? "true" : "false";
+  info.hardware_parameters["enable_on_controller_start"] = "false";
   info.hardware_parameters["motor_enable_mask"] =
       allow_enable ? "1,0,0,0,0,0" : "0,0,0,0,0,0";
   info.hardware_parameters["motor_ids"] = "0x01,0x02,0x03,0x04,0x05,0x06";

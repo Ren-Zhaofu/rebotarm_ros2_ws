@@ -65,6 +65,7 @@ def test_rs_socketcan_xacro_passes_safety_contract_without_current_writes():
             "can_interface:=vcan0",
             "allow_motor_enable:=true",
             "hold_only:=true",
+            "enable_on_controller_start:=true",
             "motor_enable_mask:=0,0,0,0,0,1",
         ],
         check=True,
@@ -75,6 +76,7 @@ def test_rs_socketcan_xacro_passes_safety_contract_without_current_writes():
     assert '<param name="can_interface">vcan0</param>' in output
     assert '<param name="allow_motor_enable">True</param>' in output
     assert '<param name="hold_only">True</param>' in output
+    assert '<param name="enable_on_controller_start">True</param>' in output
     assert '<param name="motor_enable_mask">0,0,0,0,0,1</param>' in output
     assert '<param name="mit_kp">10,15,15,15,12,10</param>' in output
     assert '<param name="mit_kd">0.3,0.3,0.3,0.4,0.3,0.3</param>' in output
@@ -92,8 +94,10 @@ def test_launch_defaults_to_rs_mock_and_read_only_hardware():
         "can_interface": "can0",
         "allow_motor_enable": "false",
         "hold_only": "true",
+        "enable_on_controller_start": "false",
         "motor_enable_mask": "0,0,0,0,0,0",
         "start_arm_controller": "true",
+        "arm_controller_start_stopped": "false",
     }
     hardware_defaults = launch_defaults(load_launch("rebotarm_hardware.launch.py"))
     assert hardware_defaults["model"] == "rs"
@@ -108,9 +112,10 @@ def test_arm_controller_condition_enforces_real_hardware_gates():
         for action in description.entities
         if isinstance(action, Node) and action.node_executable == "spawner"
     ]
-    assert len(spawners) == 2
+    assert len(spawners) == 3
     assert spawners[0].condition is None
-    condition = spawners[1].condition
+    active_condition = spawners[1].condition
+    stopped_condition = spawners[2].condition
 
     cases = [
         ({"transport": "mock", "start_arm_controller": "true"}, True),
@@ -149,7 +154,11 @@ def test_arm_controller_condition_enforces_real_hardware_gates():
             {
                 "allow_motor_enable": "false",
                 "hold_only": "true",
+                "arm_controller_start_stopped": "false",
                 **configurations,
             }
         )
-        assert condition.evaluate(context) is expected
+        assert active_condition.evaluate(context) is expected
+        context.launch_configurations["arm_controller_start_stopped"] = "true"
+        assert active_condition.evaluate(context) is False
+        assert stopped_condition.evaluate(context) is expected

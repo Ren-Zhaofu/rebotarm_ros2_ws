@@ -15,8 +15,12 @@ def generate_launch_description():
     can_interface = LaunchConfiguration("can_interface")
     allow_motor_enable = LaunchConfiguration("allow_motor_enable")
     hold_only = LaunchConfiguration("hold_only")
+    enable_on_controller_start = LaunchConfiguration("enable_on_controller_start")
     motor_enable_mask = LaunchConfiguration("motor_enable_mask")
     start_arm_controller = LaunchConfiguration("start_arm_controller")
+    arm_controller_start_stopped = LaunchConfiguration(
+        "arm_controller_start_stopped"
+    )
 
     return LaunchDescription(
         [
@@ -28,12 +32,18 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 "hold_only", default_value="true", choices=["true", "false"]
             ),
+            DeclareLaunchArgument("enable_on_controller_start", default_value="false", choices=["true", "false"]),
             DeclareLaunchArgument(
                 "motor_enable_mask", default_value="0,0,0,0,0,0"
             ),
             DeclareLaunchArgument(
                 "start_arm_controller",
                 default_value="true",
+                choices=["true", "false"],
+            ),
+            DeclareLaunchArgument(
+                "arm_controller_start_stopped",
+                default_value="false",
                 choices=["true", "false"],
             ),
             IncludeLaunchDescription(
@@ -46,8 +56,10 @@ def generate_launch_description():
                     "can_interface": can_interface,
                     "allow_motor_enable": allow_motor_enable,
                     "hold_only": hold_only,
+                    "enable_on_controller_start": enable_on_controller_start,
                     "motor_enable_mask": motor_enable_mask,
                     "start_arm_controller": start_arm_controller,
+                    "arm_controller_start_stopped": arm_controller_start_stopped,
                 }.items(),
             ),
         ]

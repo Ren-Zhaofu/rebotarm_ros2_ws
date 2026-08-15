@@ -16,8 +16,10 @@ def generate_launch_description():
     can_interface = LaunchConfiguration("can_interface")
     allow_motor_enable = LaunchConfiguration("allow_motor_enable")
     hold_only = LaunchConfiguration("hold_only")
+    enable_on_controller_start = LaunchConfiguration("enable_on_controller_start")
     motor_enable_mask = LaunchConfiguration("motor_enable_mask")
     start_arm_controller = LaunchConfiguration("start_arm_controller")
+    arm_controller_start_stopped = LaunchConfiguration("arm_controller_start_stopped")
 
     robot_description = ParameterValue(
         Command(
@@ -34,6 +36,8 @@ def generate_launch_description():
                 allow_motor_enable,
                 " hold_only:=",
                 hold_only,
+                " enable_on_controller_start:=",
+                enable_on_controller_start,
                 " motor_enable_mask:=",
                 motor_enable_mask,
             ]
@@ -41,20 +45,18 @@ def generate_launch_description():
         value_type=str,
     )
     controllers = str(bringup_share / "config" / "controllers.yaml")
-    arm_controller_allowed = IfCondition(
-        PythonExpression(
-            [
-                "'",
-                start_arm_controller,
-                "' == 'true' and ('",
-                transport,
-                "' == 'mock' or ('",
-                allow_motor_enable,
-                "' == 'true' and '",
-                hold_only,
-                "' == 'false'))",
-            ]
-        )
+    arm_controller_allowed = PythonExpression(
+        [
+            "'",
+            start_arm_controller,
+            "' == 'true' and ('",
+            transport,
+            "' == 'mock' or ('",
+            allow_motor_enable,
+            "' == 'true' and '",
+            hold_only,
+            "' == 'false'))",
+        ]
     )
 
     return LaunchDescription(
@@ -89,6 +91,12 @@ def generate_launch_description():
                 description="Hold activation positions and ignore trajectories",
             ),
             DeclareLaunchArgument(
+                "enable_on_controller_start",
+                default_value="false",
+                choices=["true", "false"],
+                description="Defer real motor enable until a position controller claims interfaces",
+            ),
+            DeclareLaunchArgument(
                 "motor_enable_mask",
                 default_value="0,0,0,0,0,0",
                 description="Six-value staged motor enable mask",
@@ -99,11 +107,17 @@ def generate_launch_description():
                 choices=["true", "false"],
                 description="Start the trajectory controller when safety gates allow",
             ),
+            DeclareLaunchArgument(
+                "arm_controller_start_stopped",
+                default_value="false",
+                choices=["true", "false"],
+                description="Load and configure arm_controller without activating it",
+            ),
             Node(
                 package="controller_manager",
                 executable="ros2_control_node",
                 parameters=[controllers],
-                remappings=[("~/robot_description", "/robot_description")],
+                remappings=[("~/robot_description", "robot_description")],
                 output="screen",
             ),
             Node(
@@ -118,7 +132,7 @@ def generate_launch_description():
                 arguments=[
                     "joint_state_broadcaster",
                     "--controller-manager",
-                    "/controller_manager",
+                    "controller_manager",
                     "--controller-manager-timeout",
                     "30",
                 ],
@@ -130,11 +144,43 @@ def generate_launch_description():
                 arguments=[
                     "arm_controller",
                     "--controller-manager",
-                    "/controller_manager",
+                    "controller_manager",
                     "--controller-manager-timeout",
                     "30",
                 ],
-                condition=arm_controller_allowed,
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            arm_controller_allowed,
+                            " and '",
+                            arm_controller_start_stopped,
+                            "' == 'false'",
+                        ]
+                    )
+                ),
+                output="screen",
+            ),
+            Node(
+                package="controller_manager",
+                executable="spawner",
+                arguments=[
+                    "arm_controller",
+                    "--controller-manager",
+                    "controller_manager",
+                    "--controller-manager-timeout",
+                    "30",
+                    "--stopped",
+                ],
+                condition=IfCondition(
+                    PythonExpression(
+                        [
+                            arm_controller_allowed,
+                            " and '",
+                            arm_controller_start_stopped,
+                            "' == 'true'",
+                        ]
+                    )
+                ),
                 output="screen",
             ),
         ]

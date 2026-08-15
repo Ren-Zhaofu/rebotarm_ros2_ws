@@ -43,6 +43,12 @@ public:
   on_activate(const rclcpp_lifecycle::State &previous_state) override;
   CallbackReturn
   on_deactivate(const rclcpp_lifecycle::State &previous_state) override;
+  hardware_interface::return_type prepare_command_mode_switch(
+      const std::vector<std::string> &start_interfaces,
+      const std::vector<std::string> &stop_interfaces) override;
+  hardware_interface::return_type perform_command_mode_switch(
+      const std::vector<std::string> &start_interfaces,
+      const std::vector<std::string> &stop_interfaces) override;
 
   hardware_interface::return_type read(const rclcpp::Time &time,
                                        const rclcpp::Duration &period) override;
@@ -60,7 +66,8 @@ private:
   bool send_position_velocity_commands();
   bool send_rs_hold_commands(std::size_t ramp_joint, double ramp_scale);
   bool activate_rs_motors();
-  void disable_motors();
+  bool enable_motors();
+  void disable_motors(bool disconnect = true);
 
   std::array<double, kJointCount> position_states_{};
   std::array<double, kJointCount> velocity_states_{};
@@ -96,6 +103,8 @@ private:
   double max_command_step_{0.05};
   double max_tracking_error_{0.2};
   bool allow_motor_enable_{false};
+  bool enable_on_controller_start_{false};
+  bool command_interfaces_active_{false};
   bool hold_only_{false};
   bool rs_reporting_{false};
   bool active_{false};
