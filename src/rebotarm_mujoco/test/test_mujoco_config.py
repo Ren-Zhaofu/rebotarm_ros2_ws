@@ -27,6 +27,20 @@ def test_position_actuators_cover_six_arm_joints():
     assert actuators[-1].attrib["joint"] == "gripper_joint1"
 
 
+def test_actuator_variants_exclude_known_neutral_pose_self_collisions():
+    expected = {
+        ("world", "link1"),
+        ("link2", "link4"),
+        ("link4", "link6"),
+        ("gripper_left", "gripper_right"),
+    }
+    for mode in ("position", "effort"):
+        for suffix in ("", "_camera"):
+            root = ET.parse(PACKAGE / "mjcf" / f"{mode}_actuators{suffix}.xml").getroot()
+            excludes = root.findall("./raw_inputs/contact/exclude")
+            assert {(item.attrib["body1"], item.attrib["body2"]) for item in excludes} == expected
+
+
 def test_effort_controller_and_actuators_match():
     config = yaml.safe_load((PACKAGE / "config" / "controllers_effort.yaml").read_text())
     params = config["arm_controller"]["ros__parameters"]

@@ -23,6 +23,13 @@
     <equality>
       <joint joint1="gripper_joint1" joint2="gripper_joint2" polycoef="0 1 0 0 0" solref="0.005 1" solimp="0.95 0.99 0.001"/>
     </equality>
+    <!-- CAD collision boxes overlap in the neutral pose; exclude robot self-collisions. -->
+    <contact>
+      <exclude body1="world" body2="link1"/>
+      <exclude body1="link2" body2="link4"/>
+      <exclude body1="link4" body2="link6"/>
+      <exclude body1="gripper_left" body2="gripper_right"/>
+    </contact>
     <sensor>
       <force name="wrist_force" site="gripper_tcp"/>
       <torque name="wrist_torque" site="gripper_tcp"/>
