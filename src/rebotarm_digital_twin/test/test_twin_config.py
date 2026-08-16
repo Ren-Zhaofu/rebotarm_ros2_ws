@@ -95,3 +95,10 @@ def test_ros_python_nodes_have_executable_entrypoints():
     ):
         source = (PACKAGE / "rebotarm_digital_twin" / filename).read_text()
         assert "if __name__ == \"__main__\":" in source
+
+
+def test_rviz_robot_model_uses_latched_description_topic():
+    rviz_config = (
+        PACKAGE.parents[0] / "rebotarm_description" / "rviz" / "display.rviz"
+    ).read_text()
+    assert "Durability Policy: Transient Local" in rviz_config
