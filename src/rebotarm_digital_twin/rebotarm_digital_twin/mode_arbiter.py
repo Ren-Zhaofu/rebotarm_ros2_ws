@@ -12,6 +12,7 @@ from std_srvs.srv import SetBool
 from rebotarm_digital_twin.twin_utils import (
     JOINT_NAMES,
     joint_limits,
+    ordered_joint_values,
     rate_limit_vector,
     within_limits,
 )
@@ -32,6 +33,7 @@ class ModeArbiter(Node):
         self.declare_parameter("model", "dm")
         self.declare_parameter("initial_mode", "FEEDBACK_ONLY")
         self.declare_parameter("feedback_timeout_sec", 0.1)
+        self.declare_parameter("feedback_limit_tolerance_rad", 0.005)
         self.declare_parameter("max_command_step_rad", 0.02)
         self.declare_parameter(
             "controller_switch_service",
@@ -45,6 +47,9 @@ class ModeArbiter(Node):
             raise ValueError(f"initial_mode must be one of {sorted(MODES)}")
         self.timeout = float(
             self.get_parameter("feedback_timeout_sec").value
+        )
+        self.feedback_limit_tolerance = float(
+            self.get_parameter("feedback_limit_tolerance_rad").value
         )
         self.max_command_step = float(
             self.get_parameter("max_command_step_rad").value
@@ -116,29 +121,32 @@ class ModeArbiter(Node):
         self.command_publisher.publish(output)
 
     def on_feedback(self, message):
-        if tuple(message.name) != JOINT_NAMES or not within_limits(
-            message.position, self.model
+        try:
+            positions = ordered_joint_values(message.name, message.position)
+        except ValueError:
+            positions = None
+        if positions is None or not within_limits(
+            positions, self.model, self.feedback_limit_tolerance
         ):
             if self.mode == "REAL_EXECUTING":
                 self.enter_fault("invalid_joint_feedback")
             return
-        self.feedback_positions = tuple(
-            float(value) for value in message.position
-        )
+        self.feedback_positions = positions
         self.last_feedback = time.monotonic()
 
     def on_target(self, message):
         if self.mode != "REAL_EXECUTING":
             return
-        if tuple(message.name) != JOINT_NAMES or not within_limits(
-            message.position, self.model
-        ):
+        try:
+            target = ordered_joint_values(message.name, message.position)
+        except ValueError:
+            target = None
+        if target is None or not within_limits(target, self.model):
             self.enter_fault("invalid_host_target")
             return
         if not self.feedback_is_fresh():
             self.enter_fault("feedback_timeout")
             return
-        target = tuple(float(value) for value in message.position)
         if self.last_command is None:
             self.last_command = self.feedback_positions
         target = rate_limit_vector(

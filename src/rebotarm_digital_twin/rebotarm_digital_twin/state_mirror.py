@@ -7,7 +7,12 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 
-from rebotarm_digital_twin.twin_utils import JOINT_NAMES, joint_limits, within_limits
+from rebotarm_digital_twin.twin_utils import (
+    JOINT_NAMES,
+    joint_limits,
+    ordered_joint_values,
+    within_limits,
+)
 
 
 class StateMirror(Node):
@@ -16,8 +21,12 @@ class StateMirror(Node):
         self.declare_parameter("model", "dm")
         self.declare_parameter("stale_timeout_sec", 0.1)
         self.declare_parameter("max_jump_rad", 0.5)
+        self.declare_parameter("feedback_limit_tolerance_rad", 0.005)
         self.timeout = float(self.get_parameter("stale_timeout_sec").value)
         self.max_jump = float(self.get_parameter("max_jump_rad").value)
+        self.limit_tolerance = float(
+            self.get_parameter("feedback_limit_tolerance_rad").value
+        )
         self.model = str(self.get_parameter("model").value)
         joint_limits(self.model)
         self.started_at = time.monotonic()
@@ -42,12 +51,14 @@ class StateMirror(Node):
         self.last_status = mode
 
     def on_state(self, message):
-        if tuple(message.name) != JOINT_NAMES or not within_limits(
-            message.position, self.model
-        ):
+        try:
+            positions = ordered_joint_values(message.name, message.position)
+        except ValueError:
             self.publish_status("FAULT", "invalid_joint_feedback")
             return
-        positions = tuple(message.position)
+        if not within_limits(positions, self.model, self.limit_tolerance):
+            self.publish_status("FAULT", "invalid_joint_feedback")
+            return
         if self.last_positions is not None and any(
             abs(new - old) > self.max_jump
             for new, old in zip(positions, self.last_positions)
@@ -59,9 +70,13 @@ class StateMirror(Node):
         mirrored.name = list(JOINT_NAMES)
         mirrored.position = list(positions)
         if len(message.velocity) == 6:
-            mirrored.velocity = list(message.velocity)
+            mirrored.velocity = list(
+                ordered_joint_values(message.name, message.velocity)
+            )
         if len(message.effort) == 6:
-            mirrored.effort = list(message.effort)
+            mirrored.effort = list(
+                ordered_joint_values(message.name, message.effort)
+            )
         self.publisher.publish(mirrored)
         self.last_positions = positions
         self.last_message_time = time.monotonic()

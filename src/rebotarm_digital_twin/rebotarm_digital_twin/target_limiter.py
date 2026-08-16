@@ -5,7 +5,12 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
-from rebotarm_digital_twin.twin_utils import JOINT_NAMES, clamp_vector, joint_limits
+from rebotarm_digital_twin.twin_utils import (
+    JOINT_NAMES,
+    clamp_vector,
+    joint_limits,
+    ordered_joint_values,
+)
 
 
 def advance_motion(
@@ -87,10 +92,12 @@ class TargetLimiter(Node):
         self.create_timer(self.period, self.advance)
 
     def on_target(self, message):
-        if tuple(message.name) != JOINT_NAMES or len(message.position) != 6:
+        try:
+            positions = ordered_joint_values(message.name, message.position)
+        except ValueError:
             self.get_logger().warning("Ignoring host target with invalid joint contract")
             return
-        self.target = clamp_vector(message.position, self.model)
+        self.target = clamp_vector(positions, self.model)
         if not self.initialized:
             self.current = self.target
             self.velocity = (0.0,) * 6

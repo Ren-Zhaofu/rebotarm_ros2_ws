@@ -37,6 +37,11 @@ def test_controller_contract():
     assert parameters["joints"] == JOINTS
     assert parameters["command_interfaces"] == ["position"]
     assert parameters["state_interfaces"] == ["position", "velocity"]
+    assert config["/**/controller_manager"]["ros__parameters"]["update_rate"] == 100
+    assert config["/**/controller_manager"]["ros__parameters"]["joint_state_broadcaster"]["type"] == (
+        "joint_state_broadcaster/JointStateBroadcaster"
+    )
+    assert config["/**/arm_controller"]["ros__parameters"]["joints"] == JOINTS
 
 
 def test_controlled_xacro_expands_for_dm_and_rs_mock():
@@ -82,8 +87,26 @@ def test_rs_socketcan_xacro_passes_safety_contract_without_current_writes():
     assert '<param name="mit_kd">0.3,0.3,0.3,0.4,0.3,0.3</param>' in output
     assert '<param name="rs_soft_start_ms">1000</param>' in output
     assert '<param name="max_tracking_error">0.2</param>' in output
+    assert '<param name="joint_directions">1,1,1,1,1,1</param>' in output
     assert "7018" not in output
     assert "current_limit" not in output
+
+
+def test_dm_socketcan_maps_joint2_motor_coordinates_to_urdf_direction():
+    xacro_file = PACKAGE_ROOT / "urdf" / "rebotarm_controlled.urdf.xacro"
+    result = subprocess.run(
+        [
+            "xacro",
+            str(xacro_file),
+            "model:=dm",
+            "transport:=socketcan",
+            "allow_motor_enable:=false",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert '<param name="joint_directions">1,-1,1,1,1,1</param>' in result.stdout
 
 
 def test_launch_defaults_to_rs_mock_and_read_only_hardware():

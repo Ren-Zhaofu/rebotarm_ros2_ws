@@ -4,6 +4,7 @@ from rebotarm_digital_twin.twin_utils import (
     JOINT_NAMES,
     clamp_vector,
     joint_limits,
+    ordered_joint_values,
     rate_limit_vector,
     within_limits,
 )
@@ -26,10 +27,20 @@ def test_joint_contract_and_limits():
     assert not within_limits([0.0, 0.1, -1.0, 0.0, 0.0, 0.0], "dm")
     assert within_limits([0.0, 1.0, 1.0, 0.0, 0.0, 0.0], "rs")
     assert not within_limits([0.0, -0.1, 1.0, 0.0, 0.0, 0.0], "rs")
+    assert not within_limits([0.0, -1.0, 0.001, 0.0, 0.0, 0.0], "dm")
+    assert within_limits(
+        [0.0, -1.0, 0.001, 0.0, 0.0, 0.0], "dm", tolerance=0.005
+    )
 
 
 def test_rate_limiter_bounds_every_step():
     assert rate_limit_vector((0,) * 6, (1,) * 6, 0.02) == (0.02,) * 6
+
+
+def test_joint_values_follow_names_instead_of_transport_order():
+    names = ("joint2", "joint3", "joint1", "joint4", "joint5", "joint6")
+    values = (2.0, 3.0, 1.0, 4.0, 5.0, 6.0)
+    assert ordered_joint_values(names, values) == (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
 
 
 def test_rate_limiter_reaches_target_after_single_target_update():

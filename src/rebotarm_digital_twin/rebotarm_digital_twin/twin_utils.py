@@ -28,6 +28,15 @@ def finite_vector(values):
     )
 
 
+def ordered_joint_values(names, values):
+    if len(names) != 6 or len(values) != 6 or len(set(names)) != 6:
+        raise ValueError("joint state must contain six unique named values")
+    indices = {name: index for index, name in enumerate(names)}
+    if set(indices) != set(JOINT_NAMES):
+        raise ValueError("joint state names do not match the six-axis contract")
+    return tuple(float(values[indices[name]]) for name in JOINT_NAMES)
+
+
 def clamp_vector(values, model="dm"):
     if len(values) != 6:
         raise ValueError("joint vector must contain exactly six values")
@@ -38,10 +47,12 @@ def clamp_vector(values, model="dm"):
     )
 
 
-def within_limits(values, model="dm"):
+def within_limits(values, model="dm", tolerance=0.0):
+    if not math.isfinite(tolerance) or tolerance < 0.0:
+        raise ValueError("limit tolerance must be finite and non-negative")
     lower_limits, upper_limits = joint_limits(model)
     return finite_vector(values) and all(
-        lower <= float(value) <= upper
+        lower - tolerance <= float(value) <= upper + tolerance
         for value, lower, upper in zip(values, lower_limits, upper_limits)
     )
 

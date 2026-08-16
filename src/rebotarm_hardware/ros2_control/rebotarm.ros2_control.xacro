@@ -29,7 +29,7 @@
             <param name="mit_kd">${mit_kd}</param>
             <param name="rs_soft_start_ms">${rs_soft_start_ms}</param>
           </xacro:if>
-          <param name="joint_directions">1,1,1,1,1,1</param>
+          <param name="joint_directions">${'1,-1,1,1,1,1' if model == 'dm' else '1,1,1,1,1,1'}</param>
           <param name="joint_offsets">0,0,0,0,0,0</param>
           <!-- Maximum velocity field sent with mode-2 position targets. -->
           <param name="position_velocity_limits">0.05,0.05,0.05,0.05,0.05,0.05</param>

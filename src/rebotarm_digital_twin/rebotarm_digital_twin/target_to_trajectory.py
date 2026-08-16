@@ -5,7 +5,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-from rebotarm_digital_twin.twin_utils import JOINT_NAMES
+from rebotarm_digital_twin.twin_utils import JOINT_NAMES, ordered_joint_values
 
 
 def positions_changed(previous, current, tolerance=1e-9):
@@ -26,9 +26,10 @@ class TargetToTrajectory(Node):
         self.create_subscription(JointState, input_topic, self.on_target, 10)
 
     def on_target(self, message):
-        if tuple(message.name) != JOINT_NAMES or len(message.position) != 6:
+        try:
+            positions = ordered_joint_values(message.name, message.position)
+        except ValueError:
             return
-        positions = tuple(message.position)
         if not positions_changed(self.last_positions, positions):
             return
         self.last_positions = positions
