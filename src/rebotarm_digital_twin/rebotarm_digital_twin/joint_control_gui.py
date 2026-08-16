@@ -82,6 +82,8 @@ class JointRow(QFrame):
         self.slider.setSingleStep(1)
         self.slider.setPageStep(100)
         self.slider.setMinimumWidth(360)
+        self.slider.setFixedHeight(32)
+        self.slider.setCursor(Qt.PointingHandCursor)
         self.slider.setAccessibleName(f"joint{index + 1} target")
         layout.addWidget(self.slider, 0, 1)
 
@@ -93,9 +95,16 @@ class JointRow(QFrame):
         self.spin.setMinimumWidth(132)
         layout.addWidget(self.spin, 0, 2)
 
-        limits = QLabel(f"{lower:.2f}                                          {upper:.2f}")
-        limits.setObjectName("limits")
-        layout.addWidget(limits, 1, 1)
+        limit_row = QHBoxLayout()
+        limit_row.setContentsMargins(1, 0, 1, 0)
+        lower_limit = QLabel(f"{lower:.2f}")
+        lower_limit.setObjectName("limitLabel")
+        upper_limit = QLabel(f"{upper:.2f}")
+        upper_limit.setObjectName("limitLabel")
+        limit_row.addWidget(lower_limit)
+        limit_row.addStretch()
+        limit_row.addWidget(upper_limit)
+        layout.addLayout(limit_row, 1, 1)
 
         self.slider.valueChanged.connect(self._slider_changed)
         self.spin.valueChanged.connect(self._spin_changed)
@@ -215,16 +224,29 @@ QFrame#jointRow {
     background: #ffffff; border: 1px solid #dce2e8; border-radius: 6px;
 }
 QLabel#jointName { font-size: 18px; font-weight: 700; color: #17212b; }
-QLabel#jointDescription, QLabel#limits, QLabel#footerText {
+QLabel#jointDescription, QLabel#limitLabel, QLabel#footerText {
     color: #75818e; font-size: 12px;
 }
+QSlider { background: transparent; }
 QSlider::groove:horizontal {
-    height: 6px; background: #dce3e8; border-radius: 3px;
+    height: 4px; background: #dfe5e9; border-radius: 2px;
 }
-QSlider::sub-page:horizontal { background: #188a73; border-radius: 3px; }
+QSlider::sub-page:horizontal {
+    background: #1b8a73; border-radius: 2px;
+}
+QSlider::add-page:horizontal {
+    background: #dfe5e9; border-radius: 2px;
+}
 QSlider::handle:horizontal {
-    width: 20px; margin: -8px 0; background: #ffffff;
-    border: 2px solid #188a73; border-radius: 10px;
+    width: 16px; height: 16px; margin: -7px 0;
+    background: #1b8a73; border: 2px solid #ffffff; border-radius: 9px;
+}
+QSlider::handle:horizontal:hover {
+    width: 18px; height: 18px; margin: -8px -1px;
+    background: #14745f; border: 2px solid #d8eee8; border-radius: 10px;
+}
+QSlider::handle:horizontal:pressed {
+    background: #105d4e; border-color: #b7ddd3;
 }
 QDoubleSpinBox {
     min-height: 34px; background: #f8fafb; border: 1px solid #cfd7df;
