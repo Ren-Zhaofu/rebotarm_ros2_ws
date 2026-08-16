@@ -118,7 +118,7 @@ def test_rviz_robot_model_uses_latched_description_topic():
 def test_feedback_twin_has_one_tf_publisher_for_arm_and_gripper():
     launch_source = (PACKAGE / "launch" / "feedback_twin.launch.py").read_text()
     assert '"publish_robot_state": "false"' in launch_source
-    assert '"robot_description_topic": "/robot_description"' in launch_source
+    assert '"robot_description_topic"' not in launch_source
 
 
 def test_can_preflight_rejects_unavailable_interface(monkeypatch):

@@ -3,7 +3,7 @@ from pathlib import Path
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 from launch.substitutions import Command, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
@@ -138,6 +138,18 @@ def generate_launch_description():
                 executable="robot_state_publisher",
                 parameters=[{"robot_description": robot_description}],
                 condition=IfCondition(publish_robot_state),
+                output="screen",
+            ),
+            Node(
+                package="rebotarm_bringup",
+                executable="robot_description_publisher.py",
+                parameters=[
+                    {
+                        "robot_description": robot_description,
+                        "robot_description_topic": robot_description_topic,
+                    }
+                ],
+                condition=UnlessCondition(publish_robot_state),
                 output="screen",
             ),
             Node(

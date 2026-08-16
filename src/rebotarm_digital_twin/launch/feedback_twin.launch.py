@@ -63,7 +63,6 @@ def generate_launch_description():
                 "start_arm_controller": allow_motor_enable,
                 "arm_controller_start_stopped": "true",
                 "publish_robot_state": "false",
-                "robot_description_topic": "/robot_description",
             }.items(),
         ),
     ])

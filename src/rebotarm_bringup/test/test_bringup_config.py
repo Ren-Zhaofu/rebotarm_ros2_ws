@@ -132,6 +132,17 @@ def test_launch_defaults_to_rs_mock_and_read_only_hardware():
     assert hardware_defaults["robot_description_topic"] == "robot_description"
 
 
+def test_control_launch_publishes_description_without_duplicate_tf():
+    description = load_launch("rebotarm_control.launch.py")
+    nodes = [action for action in description.entities if isinstance(action, Node)]
+    publishers = [
+        action
+        for action in nodes
+        if action.node_executable == "robot_description_publisher.py"
+    ]
+    assert len(publishers) == 1
+
+
 def test_arm_controller_condition_enforces_real_hardware_gates():
     description = load_launch("rebotarm_control.launch.py")
     spawners = [
