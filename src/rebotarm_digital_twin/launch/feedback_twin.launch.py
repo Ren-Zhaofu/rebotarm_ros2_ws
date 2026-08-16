@@ -47,17 +47,29 @@ def generate_launch_description():
             "motor_enable_mask", default_value="0,0,0,0,0,0"
         ),
         real_bringup,
-        Node(package="rebotarm_digital_twin", executable="state_mirror.py", output="screen"),
-        Node(package="rebotarm_digital_twin", executable="mode_arbiter.py", output="screen"),
+        Node(
+            package="rebotarm_digital_twin",
+            executable="state_mirror.py",
+            parameters=[{"model": model}],
+            output="screen",
+        ),
+        Node(
+            package="rebotarm_digital_twin",
+            executable="mode_arbiter.py",
+            parameters=[{"model": model}],
+            output="screen",
+        ),
         Node(
             package="rebotarm_digital_twin",
             executable="joint_control_gui.py",
+            parameters=[{"model": model}],
             condition=IfCondition(allow_motor_enable),
             output="screen",
         ),
         Node(
             package="rebotarm_digital_twin",
             executable="target_limiter.py",
+            parameters=[{"model": model}],
             condition=IfCondition(allow_motor_enable),
             output="screen",
         ),

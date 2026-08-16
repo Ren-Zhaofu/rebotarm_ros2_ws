@@ -2,9 +2,8 @@ from pathlib import Path
 
 from rebotarm_digital_twin.twin_utils import (
     JOINT_NAMES,
-    LOWER_LIMITS,
-    UPPER_LIMITS,
     clamp_vector,
+    joint_limits,
     rate_limit_vector,
     within_limits,
 )
@@ -17,10 +16,16 @@ PACKAGE = Path(__file__).parents[1]
 
 def test_joint_contract_and_limits():
     assert JOINT_NAMES == ("joint1", "joint2", "joint3", "joint4", "joint5", "joint6")
-    assert clamp_vector([99] * 6) == UPPER_LIMITS
-    assert clamp_vector([-99] * 6) == LOWER_LIMITS
-    assert within_limits([0.0, -1.0, -1.0, 0.0, 0.0, 0.0])
-    assert not within_limits([0.0, 0.1, -1.0, 0.0, 0.0, 0.0])
+    dm_lower, dm_upper = joint_limits("dm")
+    rs_lower, rs_upper = joint_limits("rs")
+    assert clamp_vector([99] * 6, "dm") == dm_upper
+    assert clamp_vector([-99] * 6, "dm") == dm_lower
+    assert clamp_vector([99] * 6, "rs") == rs_upper
+    assert clamp_vector([-99] * 6, "rs") == rs_lower
+    assert within_limits([0.0, -1.0, -1.0, 0.0, 0.0, 0.0], "dm")
+    assert not within_limits([0.0, 0.1, -1.0, 0.0, 0.0, 0.0], "dm")
+    assert within_limits([0.0, 1.0, 1.0, 0.0, 0.0, 0.0], "rs")
+    assert not within_limits([0.0, -0.1, 1.0, 0.0, 0.0, 0.0], "rs")
 
 
 def test_rate_limiter_bounds_every_step():

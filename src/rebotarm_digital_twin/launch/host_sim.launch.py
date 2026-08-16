@@ -26,9 +26,15 @@ def generate_launch_description():
         Node(
             package="rebotarm_digital_twin",
             executable="joint_control_gui.py",
+            parameters=[{"model": model}],
             output="screen",
         ),
-        Node(package="rebotarm_digital_twin", executable="target_limiter.py", output="screen"),
+        Node(
+            package="rebotarm_digital_twin",
+            executable="target_limiter.py",
+            parameters=[{"model": model}],
+            output="screen",
+        ),
         Node(
             package="rebotarm_digital_twin",
             executable="target_to_trajectory.py",
@@ -37,7 +43,7 @@ def generate_launch_description():
         Node(
             package="rebotarm_digital_twin",
             executable="mode_arbiter.py",
-            parameters=[{"initial_mode": "SIM_ONLY"}],
+            parameters=[{"initial_mode": "SIM_ONLY", "model": model}],
             output="screen",
         ),
     ])

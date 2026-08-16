@@ -11,6 +11,7 @@ from std_srvs.srv import SetBool
 
 from rebotarm_digital_twin.twin_utils import (
     JOINT_NAMES,
+    joint_limits,
     rate_limit_vector,
     within_limits,
 )
@@ -28,6 +29,7 @@ MODES = {
 class ModeArbiter(Node):
     def __init__(self):
         super().__init__("mode_arbiter")
+        self.declare_parameter("model", "dm")
         self.declare_parameter("initial_mode", "FEEDBACK_ONLY")
         self.declare_parameter("feedback_timeout_sec", 0.1)
         self.declare_parameter("max_command_step_rad", 0.02)
@@ -37,6 +39,8 @@ class ModeArbiter(Node):
         )
         self.declare_parameter("controller_service_timeout_sec", 2.0)
         self.mode = str(self.get_parameter("initial_mode").value)
+        self.model = str(self.get_parameter("model").value)
+        joint_limits(self.model)
         if self.mode not in MODES:
             raise ValueError(f"initial_mode must be one of {sorted(MODES)}")
         self.timeout = float(
@@ -113,7 +117,7 @@ class ModeArbiter(Node):
 
     def on_feedback(self, message):
         if tuple(message.name) != JOINT_NAMES or not within_limits(
-            message.position
+            message.position, self.model
         ):
             if self.mode == "REAL_EXECUTING":
                 self.enter_fault("invalid_joint_feedback")
@@ -127,7 +131,7 @@ class ModeArbiter(Node):
         if self.mode != "REAL_EXECUTING":
             return
         if tuple(message.name) != JOINT_NAMES or not within_limits(
-            message.position
+            message.position, self.model
         ):
             self.enter_fault("invalid_host_target")
             return

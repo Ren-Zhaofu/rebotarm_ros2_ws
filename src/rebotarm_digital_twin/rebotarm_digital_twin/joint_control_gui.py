@@ -24,8 +24,7 @@ from sensor_msgs.msg import JointState
 
 from rebotarm_digital_twin.twin_utils import (
     JOINT_NAMES,
-    LOWER_LIMITS,
-    UPPER_LIMITS,
+    joint_limits,
 )
 
 
@@ -35,6 +34,9 @@ SLIDER_STEPS = 10000
 class JointTargetNode(Node):
     def __init__(self):
         super().__init__("joint_control_gui")
+        self.declare_parameter("model", "dm")
+        self.model = str(self.get_parameter("model").value)
+        self.lower_limits, self.upper_limits = joint_limits(self.model)
         self.publisher = self.create_publisher(
             JointState,
             "/host/raw_joint_states",
@@ -160,6 +162,7 @@ class JointControlWindow(QMainWindow):
         title = QLabel("关节目标控制")
         title.setObjectName("title")
         subtitle = QLabel("reBotArm · 6-DOF · rad")
+        subtitle.setText(f"reBotArm {node.model.upper()} · 6-DOF · rad")
         subtitle.setObjectName("subtitle")
         title_box.addWidget(title)
         title_box.addWidget(subtitle)
@@ -172,11 +175,11 @@ class JointControlWindow(QMainWindow):
 
         initial = tuple(
             max(low, min(high, 0.0))
-            for low, high in zip(LOWER_LIMITS, UPPER_LIMITS)
+            for low, high in zip(node.lower_limits, node.upper_limits)
         )
         self.rows = []
         for index, (lower, upper, value) in enumerate(
-            zip(LOWER_LIMITS, UPPER_LIMITS, initial)
+            zip(node.lower_limits, node.upper_limits, initial)
         ):
             row = JointRow(index, lower, upper, value, self.publish)
             self.rows.append(row)
@@ -202,7 +205,9 @@ class JointControlWindow(QMainWindow):
         self.feedback.setText("目标已更新")
 
     def center_all(self):
-        for row, lower, upper in zip(self.rows, LOWER_LIMITS, UPPER_LIMITS):
+        for row, lower, upper in zip(
+            self.rows, self.node.lower_limits, self.node.upper_limits
+        ):
             row.set_value((lower + upper) / 2.0, emit=False)
         self.publish()
 

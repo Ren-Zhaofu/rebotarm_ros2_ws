@@ -7,16 +7,19 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 
-from rebotarm_digital_twin.twin_utils import JOINT_NAMES, within_limits
+from rebotarm_digital_twin.twin_utils import JOINT_NAMES, joint_limits, within_limits
 
 
 class StateMirror(Node):
     def __init__(self):
         super().__init__("state_mirror")
+        self.declare_parameter("model", "dm")
         self.declare_parameter("stale_timeout_sec", 0.1)
         self.declare_parameter("max_jump_rad", 0.5)
         self.timeout = float(self.get_parameter("stale_timeout_sec").value)
         self.max_jump = float(self.get_parameter("max_jump_rad").value)
+        self.model = str(self.get_parameter("model").value)
+        joint_limits(self.model)
         self.started_at = time.monotonic()
         self.last_message_time = 0.0
         self.last_positions = None
@@ -39,7 +42,9 @@ class StateMirror(Node):
         self.last_status = mode
 
     def on_state(self, message):
-        if tuple(message.name) != JOINT_NAMES or not within_limits(message.position):
+        if tuple(message.name) != JOINT_NAMES or not within_limits(
+            message.position, self.model
+        ):
             self.publish_status("FAULT", "invalid_joint_feedback")
             return
         positions = tuple(message.position)

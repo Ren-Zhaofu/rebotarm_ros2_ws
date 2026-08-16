@@ -7,6 +7,8 @@ use separate topics. The default real mode is read-only.
 ## Read-only real feedback
 
 Run `ros2 launch rebotarm_digital_twin feedback_twin.launch.py model:=dm`.
+Use `model:=rs` for the RS arm; GUI limits, feedback validation, and command
+gates follow the selected model's URDF limits.
 The launch defaults to `allow_motor_enable:=false`, an all-zero enable mask,
 and no active arm trajectory controller. DM feedback is published on
 `/real/joint_states`; the mirrored model state is `/twin/joint_states`. Twin

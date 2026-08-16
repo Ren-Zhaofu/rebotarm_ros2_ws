@@ -3,8 +3,23 @@
 import math
 
 JOINT_NAMES = tuple(f"joint{i}" for i in range(1, 7))
-LOWER_LIMITS = (-2.8, -3.14, -3.14, -1.87, -1.57, -3.14)
-UPPER_LIMITS = (2.8, 0.0, 0.0, 1.57, 1.57, 3.14)
+MODEL_LIMITS = {
+    "dm": (
+        (-2.8, -3.14, -3.14, -1.87, -1.57, -3.14),
+        (2.8, 0.0, 0.0, 1.57, 1.57, 3.14),
+    ),
+    "rs": (
+        (-2.8, 0.0, 0.0, -1.57, -1.57, -3.14),
+        (2.8, 3.14, 3.14, 1.57, 1.57, 3.14),
+    ),
+}
+
+
+def joint_limits(model):
+    try:
+        return MODEL_LIMITS[str(model)]
+    except KeyError as exception:
+        raise ValueError("model must be 'dm' or 'rs'") from exception
 
 
 def finite_vector(values):
@@ -13,19 +28,21 @@ def finite_vector(values):
     )
 
 
-def clamp_vector(values):
+def clamp_vector(values, model="dm"):
     if len(values) != 6:
         raise ValueError("joint vector must contain exactly six values")
+    lower_limits, upper_limits = joint_limits(model)
     return tuple(
         max(lower, min(upper, float(value)))
-        for value, lower, upper in zip(values, LOWER_LIMITS, UPPER_LIMITS)
+        for value, lower, upper in zip(values, lower_limits, upper_limits)
     )
 
 
-def within_limits(values):
+def within_limits(values, model="dm"):
+    lower_limits, upper_limits = joint_limits(model)
     return finite_vector(values) and all(
         lower <= float(value) <= upper
-        for value, lower, upper in zip(values, LOWER_LIMITS, UPPER_LIMITS)
+        for value, lower, upper in zip(values, lower_limits, upper_limits)
     )
 
 
