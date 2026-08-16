@@ -19,6 +19,7 @@ from PyQt5.QtWidgets import (
 import rclpy
 from rclpy.node import Node
 from rclpy._rclpy_pybind11 import RCLError
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import JointState
 
 from rebotarm_digital_twin.twin_utils import (
@@ -35,7 +36,13 @@ class JointTargetNode(Node):
     def __init__(self):
         super().__init__("joint_control_gui")
         self.publisher = self.create_publisher(
-            JointState, "/host/raw_joint_states", 10
+            JointState,
+            "/host/raw_joint_states",
+            QoSProfile(
+                depth=1,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                reliability=ReliabilityPolicy.RELIABLE,
+            ),
         )
 
     def publish_positions(self, positions):
@@ -179,9 +186,6 @@ class JointControlWindow(QMainWindow):
 
         self.setStyleSheet(STYLESHEET)
         QTimer.singleShot(0, self.publish)
-        self.publish_timer = QTimer(self)
-        self.publish_timer.timeout.connect(self.publish)
-        self.publish_timer.start(100)
 
     def publish(self):
         positions = tuple(row.value() for row in self.rows)

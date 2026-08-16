@@ -8,6 +8,7 @@ from rebotarm_digital_twin.twin_utils import (
     rate_limit_vector,
     within_limits,
 )
+from rebotarm_digital_twin.target_to_trajectory import positions_changed
 
 
 PACKAGE = Path(__file__).parents[1]
@@ -23,6 +24,14 @@ def test_joint_contract_and_limits():
 
 def test_rate_limiter_bounds_every_step():
     assert rate_limit_vector((0,) * 6, (1,) * 6, 0.02) == (0.02,) * 6
+
+
+def test_trajectory_bridge_suppresses_unchanged_targets():
+    target = (0.0, -1.0, -1.0, 0.0, 0.0, 0.0)
+    assert positions_changed(None, target)
+    assert not positions_changed(target, target)
+    assert not positions_changed(target, (*target[:-1], 1e-10))
+    assert positions_changed(target, (*target[:-1], 1e-3))
 
 
 def test_launch_files_exist():

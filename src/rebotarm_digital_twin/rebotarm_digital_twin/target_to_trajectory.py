@@ -8,6 +8,12 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from rebotarm_digital_twin.twin_utils import JOINT_NAMES
 
 
+def positions_changed(previous, current, tolerance=1e-9):
+    if previous is None:
+        return True
+    return any(abs(old - new) > tolerance for old, new in zip(previous, current))
+
+
 class TargetToTrajectory(Node):
     def __init__(self):
         super().__init__("target_to_trajectory")
@@ -15,16 +21,21 @@ class TargetToTrajectory(Node):
         self.declare_parameter("output_topic", "/arm_controller/joint_trajectory")
         input_topic = str(self.get_parameter("input_topic").value)
         output_topic = str(self.get_parameter("output_topic").value)
+        self.last_positions = None
         self.publisher = self.create_publisher(JointTrajectory, output_topic, 10)
         self.create_subscription(JointState, input_topic, self.on_target, 10)
 
     def on_target(self, message):
         if tuple(message.name) != JOINT_NAMES or len(message.position) != 6:
             return
+        positions = tuple(message.position)
+        if not positions_changed(self.last_positions, positions):
+            return
+        self.last_positions = positions
         trajectory = JointTrajectory()
         trajectory.joint_names = list(JOINT_NAMES)
         point = JointTrajectoryPoint()
-        point.positions = list(message.position)
+        point.positions = list(positions)
         point.time_from_start = Duration(sec=0, nanosec=100_000_000)
         trajectory.points = [point]
         self.publisher.publish(trajectory)
