@@ -3,6 +3,8 @@
 import re
 import subprocess
 
+from ament_index_python.packages import PackageNotFoundError, get_package_prefix
+
 
 def check_socketcan_interface(interface):
     """Return whether a SocketCAN interface is usable and a user-facing reason."""
@@ -46,3 +48,40 @@ def check_socketcan_interface(interface):
         )
 
     return True, f"SocketCAN '{interface}' is UP ({state.group(1)})."
+
+
+def check_motor_feedback(interface, model):
+    """Request one read-only state sample and require all configured motors."""
+    tools = {
+        "dm": ("rebotarm_dm_motor_sdk", "dm_motor_read_state"),
+        "rs": ("rs_motor_sdk", "rs_motor_read_state"),
+    }
+    try:
+        package, executable = tools[model]
+    except KeyError:
+        return False, f"Unsupported motor model '{model}' for feedback preflight."
+
+    try:
+        prefix = get_package_prefix(package)
+    except PackageNotFoundError:
+        return False, f"Motor feedback tool for model '{model}' is not installed."
+
+    try:
+        result = subprocess.run(
+            [f"{prefix}/lib/{package}/{executable}", interface],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"Timed out waiting for {model.upper()} motor feedback on '{interface}'."
+
+    if result.returncode != 0:
+        return False, (
+            f"No complete {model.upper()} motor feedback on '{interface}'. "
+            "Check motor power, CANH/CANL wiring, 120-ohm termination, "
+            "the selected CAN channel, and the 1 Mbps bitrate."
+        )
+
+    return True, f"Complete {model.upper()} motor feedback received on '{interface}'."

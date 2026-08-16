@@ -14,6 +14,7 @@ from rebotarm_digital_twin.state_mirror import (
     DISPLAY_JOINT_NAMES,
     with_fixed_gripper,
 )
+from rebotarm_digital_twin import can_preflight
 from rebotarm_digital_twin.can_preflight import check_socketcan_interface
 
 
@@ -144,3 +145,25 @@ def test_can_preflight_accepts_active_socketcan(monkeypatch):
     ready, message = check_socketcan_interface("can0")
     assert ready
     assert "ERROR-ACTIVE" in message
+
+
+def test_motor_preflight_rejects_incomplete_feedback(monkeypatch):
+    import subprocess
+
+    monkeypatch.setattr(can_preflight, "get_package_prefix", lambda package: "/opt/test")
+    result = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="")
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: result)
+    ready, message = can_preflight.check_motor_feedback("can0", "dm")
+    assert not ready
+    assert "No complete DM motor feedback" in message
+
+
+def test_motor_preflight_accepts_complete_feedback(monkeypatch):
+    import subprocess
+
+    monkeypatch.setattr(can_preflight, "get_package_prefix", lambda package: "/opt/test")
+    result = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: result)
+    ready, message = can_preflight.check_motor_feedback("can0", "dm")
+    assert ready
+    assert "Complete DM motor feedback" in message

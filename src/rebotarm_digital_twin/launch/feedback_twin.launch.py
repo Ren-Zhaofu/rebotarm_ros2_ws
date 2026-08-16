@@ -16,16 +16,26 @@ from launch.conditions import IfCondition
 from launch_ros.actions import Node, PushRosNamespace
 from launch_ros.parameter_descriptions import ParameterValue
 
-from rebotarm_digital_twin.can_preflight import check_socketcan_interface
+from rebotarm_digital_twin.can_preflight import (
+    check_motor_feedback,
+    check_socketcan_interface,
+)
 
 
 def start_after_can_preflight(context, actions):
     interface = LaunchConfiguration("can_interface").perform(context)
+    model = LaunchConfiguration("model").perform(context)
     ready, message = check_socketcan_interface(interface)
     if not ready:
         get_logger("feedback_twin").error(f"CAN preflight failed: {message}")
         return []
-    return [LogInfo(msg=message), *actions]
+    feedback_ready, feedback_message = check_motor_feedback(interface, model)
+    if not feedback_ready:
+        get_logger("feedback_twin").error(
+            f"CAN preflight failed: {feedback_message}"
+        )
+        return []
+    return [LogInfo(msg=f"{message} {feedback_message}"), *actions]
 
 
 def generate_launch_description():
