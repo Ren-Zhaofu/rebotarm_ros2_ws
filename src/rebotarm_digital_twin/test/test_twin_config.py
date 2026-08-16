@@ -10,6 +10,10 @@ from rebotarm_digital_twin.twin_utils import (
 )
 from rebotarm_digital_twin.target_to_trajectory import positions_changed
 from rebotarm_digital_twin.target_limiter import advance_motion
+from rebotarm_digital_twin.state_mirror import (
+    DISPLAY_JOINT_NAMES,
+    with_fixed_gripper,
+)
 
 
 PACKAGE = Path(__file__).parents[1]
@@ -41,6 +45,11 @@ def test_joint_values_follow_names_instead_of_transport_order():
     names = ("joint2", "joint3", "joint1", "joint4", "joint5", "joint6")
     values = (2.0, 3.0, 1.0, 4.0, 5.0, 6.0)
     assert ordered_joint_values(names, values) == (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+
+
+def test_feedback_display_includes_a_fixed_closed_gripper():
+    assert DISPLAY_JOINT_NAMES == JOINT_NAMES + ("gripper_joint1", "gripper_joint2")
+    assert with_fixed_gripper((1.0,) * 6) == (1.0,) * 6 + (0.0, 0.0)
 
 
 def test_rate_limiter_reaches_target_after_single_target_update():

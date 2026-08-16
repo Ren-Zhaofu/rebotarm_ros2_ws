@@ -14,6 +14,14 @@ from rebotarm_digital_twin.twin_utils import (
     within_limits,
 )
 
+DISPLAY_GRIPPER_JOINTS = ("gripper_joint1", "gripper_joint2")
+DISPLAY_JOINT_NAMES = JOINT_NAMES + DISPLAY_GRIPPER_JOINTS
+
+
+def with_fixed_gripper(values):
+    """Append the temporary closed gripper state required for RViz TF."""
+    return tuple(float(value) for value in values) + (0.0, 0.0)
+
 
 class StateMirror(Node):
     def __init__(self):
@@ -67,15 +75,21 @@ class StateMirror(Node):
             return
         mirrored = JointState()
         mirrored.header = message.header
-        mirrored.name = list(JOINT_NAMES)
-        mirrored.position = list(positions)
+        # The DM/RS arm feedback contains six axes only. Keep the unreconciled
+        # gripper closed in the display until its hardware URDF is supplied.
+        mirrored.name = list(DISPLAY_JOINT_NAMES)
+        mirrored.position = list(with_fixed_gripper(positions))
         if len(message.velocity) == 6:
             mirrored.velocity = list(
-                ordered_joint_values(message.name, message.velocity)
+                with_fixed_gripper(
+                    ordered_joint_values(message.name, message.velocity)
+                )
             )
         if len(message.effort) == 6:
             mirrored.effort = list(
-                ordered_joint_values(message.name, message.effort)
+                with_fixed_gripper(
+                    ordered_joint_values(message.name, message.effort)
+                )
             )
         self.publisher.publish(mirrored)
         self.last_positions = positions
