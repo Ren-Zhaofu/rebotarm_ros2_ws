@@ -21,6 +21,7 @@ def generate_launch_description():
     start_arm_controller = LaunchConfiguration("start_arm_controller")
     arm_controller_start_stopped = LaunchConfiguration("arm_controller_start_stopped")
     publish_robot_state = LaunchConfiguration("publish_robot_state")
+    robot_description_topic = LaunchConfiguration("robot_description_topic")
 
     robot_description = ParameterValue(
         Command(
@@ -120,11 +121,16 @@ def generate_launch_description():
                 choices=["true", "false"],
                 description="Publish TF from the controller joint states",
             ),
+            DeclareLaunchArgument(
+                "robot_description_topic",
+                default_value="robot_description",
+                description="Robot description topic consumed by controller_manager",
+            ),
             Node(
                 package="controller_manager",
                 executable="ros2_control_node",
                 parameters=[controllers],
-                remappings=[("~/robot_description", "robot_description")],
+                remappings=[("~/robot_description", robot_description_topic)],
                 output="screen",
             ),
             Node(

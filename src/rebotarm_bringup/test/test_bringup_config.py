@@ -122,12 +122,14 @@ def test_launch_defaults_to_rs_mock_and_read_only_hardware():
         "start_arm_controller": "true",
         "arm_controller_start_stopped": "false",
         "publish_robot_state": "true",
+        "robot_description_topic": "robot_description",
     }
     hardware_defaults = launch_defaults(load_launch("rebotarm_hardware.launch.py"))
     assert hardware_defaults["model"] == "rs"
     assert hardware_defaults["allow_motor_enable"] == "false"
     assert hardware_defaults["hold_only"] == "true"
     assert hardware_defaults["publish_robot_state"] == "true"
+    assert hardware_defaults["robot_description_topic"] == "robot_description"
 
 
 def test_arm_controller_condition_enforces_real_hardware_gates():
