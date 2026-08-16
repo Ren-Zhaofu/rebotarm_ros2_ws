@@ -14,6 +14,7 @@ from rebotarm_digital_twin.state_mirror import (
     DISPLAY_JOINT_NAMES,
     with_fixed_gripper,
 )
+from rebotarm_digital_twin.can_preflight import check_socketcan_interface
 
 
 PACKAGE = Path(__file__).parents[1]
@@ -116,3 +117,30 @@ def test_rviz_robot_model_uses_latched_description_topic():
 def test_feedback_twin_has_one_tf_publisher_for_arm_and_gripper():
     launch_source = (PACKAGE / "launch" / "feedback_twin.launch.py").read_text()
     assert '"publish_robot_state": "false"' in launch_source
+
+
+def test_can_preflight_rejects_unavailable_interface(monkeypatch):
+    import subprocess
+
+    result = subprocess.CompletedProcess(
+        args=[], returncode=1, stdout="", stderr="Cannot find device"
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: result)
+    ready, message = check_socketcan_interface("can9")
+    assert not ready
+    assert "does not exist" in message
+
+
+def test_can_preflight_accepts_active_socketcan(monkeypatch):
+    import subprocess
+
+    result = subprocess.CompletedProcess(
+        args=[],
+        returncode=0,
+        stdout="can0: <NOARP,UP,LOWER_UP>\nlink/can\ncan state ERROR-ACTIVE\n",
+        stderr="",
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: result)
+    ready, message = check_socketcan_interface("can0")
+    assert ready
+    assert "ERROR-ACTIVE" in message

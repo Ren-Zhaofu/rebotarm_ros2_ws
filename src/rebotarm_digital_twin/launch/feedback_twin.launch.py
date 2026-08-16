@@ -2,12 +2,30 @@ from pathlib import Path
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.actions import (
+    DeclareLaunchArgument,
+    GroupAction,
+    IncludeLaunchDescription,
+    LogInfo,
+    OpaqueFunction,
+)
+from launch.logging import get_logger
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command
 from launch.conditions import IfCondition
 from launch_ros.actions import Node, PushRosNamespace
 from launch_ros.parameter_descriptions import ParameterValue
+
+from rebotarm_digital_twin.can_preflight import check_socketcan_interface
+
+
+def start_after_can_preflight(context, actions):
+    interface = LaunchConfiguration("can_interface").perform(context)
+    ready, message = check_socketcan_interface(interface)
+    if not ready:
+        get_logger("feedback_twin").error(f"CAN preflight failed: {message}")
+        return []
+    return [LogInfo(msg=message), *actions]
 
 
 def generate_launch_description():
@@ -38,15 +56,7 @@ def generate_launch_description():
             }.items(),
         ),
     ])
-    return LaunchDescription([
-        DeclareLaunchArgument("model", default_value="dm", choices=["dm", "rs"]),
-        DeclareLaunchArgument("can_interface", default_value="can0"),
-        DeclareLaunchArgument(
-            "allow_motor_enable", default_value="false", choices=["true", "false"]
-        ),
-        DeclareLaunchArgument(
-            "motor_enable_mask", default_value="0,0,0,0,0,0"
-        ),
+    runtime_actions = [
         real_bringup,
         Node(
             package="rebotarm_digital_twin",
@@ -96,5 +106,19 @@ def generate_launch_description():
             executable="rviz2",
             arguments=["-d", str(description / "rviz" / "display.rviz")],
             output="screen",
+        ),
+    ]
+    return LaunchDescription([
+        DeclareLaunchArgument("model", default_value="dm", choices=["dm", "rs"]),
+        DeclareLaunchArgument("can_interface", default_value="can0"),
+        DeclareLaunchArgument(
+            "allow_motor_enable", default_value="false", choices=["true", "false"]
+        ),
+        DeclareLaunchArgument(
+            "motor_enable_mask", default_value="0,0,0,0,0,0"
+        ),
+        OpaqueFunction(
+            function=start_after_can_preflight,
+            args=[runtime_actions],
         ),
     ])
