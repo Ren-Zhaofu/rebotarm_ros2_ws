@@ -26,6 +26,14 @@ def test_rate_limiter_bounds_every_step():
     assert rate_limit_vector((0,) * 6, (1,) * 6, 0.02) == (0.02,) * 6
 
 
+def test_rate_limiter_reaches_target_after_single_target_update():
+    current = (0.0,) * 6
+    target = (0.1, -0.1, -0.1, 0.1, -0.1, 0.1)
+    for _ in range(5):
+        current = rate_limit_vector(current, target, 0.02)
+    assert current == target
+
+
 def test_trajectory_bridge_suppresses_unchanged_targets():
     target = (0.0, -1.0, -1.0, 0.0, 0.0, 0.0)
     assert positions_changed(None, target)
