@@ -18,6 +18,7 @@ health is JSON on `/twin/status` and reports `FEEDBACK_ONLY`, `STALE`, or
 Run `ros2 launch rebotarm_digital_twin host_sim.launch.py model:=dm`. The GUI
 publishes `/host/raw_joint_states`. The limiter applies the DM URDF limits and
 minimum-jerk interpolation before publishing `/host/target_joint_states`. The
+acceleration-limited target generator publishes a 50 Hz motion profile before the
 trajectory bridge commands MuJoCo through `/arm_controller/joint_trajectory`. This
 launch uses `SIM_ONLY` and never opens SocketCAN.
 

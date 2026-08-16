@@ -36,7 +36,7 @@ class TargetToTrajectory(Node):
         trajectory.joint_names = list(JOINT_NAMES)
         point = JointTrajectoryPoint()
         point.positions = list(positions)
-        point.time_from_start = Duration(sec=0, nanosec=100_000_000)
+        point.time_from_start = Duration(sec=0, nanosec=40_000_000)
         trajectory.points = [point]
         self.publisher.publish(trajectory)
 

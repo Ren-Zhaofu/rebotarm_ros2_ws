@@ -9,6 +9,7 @@ from rebotarm_digital_twin.twin_utils import (
     within_limits,
 )
 from rebotarm_digital_twin.target_to_trajectory import positions_changed
+from rebotarm_digital_twin.target_limiter import advance_motion
 
 
 PACKAGE = Path(__file__).parents[1]
@@ -32,6 +33,25 @@ def test_rate_limiter_reaches_target_after_single_target_update():
     for _ in range(5):
         current = rate_limit_vector(current, target, 0.02)
     assert current == target
+
+
+def test_smooth_motion_respects_velocity_and_acceleration_limits():
+    current = (0.0,) * 6
+    velocity = (0.0,) * 6
+    target = (0.1, -0.1, -0.1, 0.1, -0.1, 0.1)
+    previous_velocity = velocity
+    for _ in range(200):
+        current, velocity = advance_motion(
+            current, velocity, target, 0.02, 0.004, 0.6
+        )
+        assert all(abs(value) <= 0.2 + 1e-12 for value in velocity)
+        assert all(
+            abs(new - old) <= 0.012 + 1e-12
+            for old, new in zip(previous_velocity, velocity)
+        )
+        previous_velocity = velocity
+    assert current == target
+    assert velocity == (0.0,) * 6
 
 
 def test_trajectory_bridge_suppresses_unchanged_targets():
