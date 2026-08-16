@@ -21,6 +21,7 @@ def generate_launch_description():
     arm_controller_start_stopped = LaunchConfiguration(
         "arm_controller_start_stopped"
     )
+    publish_robot_state = LaunchConfiguration("publish_robot_state")
 
     return LaunchDescription(
         [
@@ -46,6 +47,11 @@ def generate_launch_description():
                 default_value="false",
                 choices=["true", "false"],
             ),
+            DeclareLaunchArgument(
+                "publish_robot_state",
+                default_value="true",
+                choices=["true", "false"],
+            ),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     str(bringup_share / "launch" / "rebotarm_control.launch.py")
@@ -60,6 +66,7 @@ def generate_launch_description():
                     "motor_enable_mask": motor_enable_mask,
                     "start_arm_controller": start_arm_controller,
                     "arm_controller_start_stopped": arm_controller_start_stopped,
+                    "publish_robot_state": publish_robot_state,
                 }.items(),
             ),
         ]

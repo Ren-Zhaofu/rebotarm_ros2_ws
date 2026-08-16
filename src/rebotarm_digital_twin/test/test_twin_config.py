@@ -111,3 +111,8 @@ def test_rviz_robot_model_uses_latched_description_topic():
         PACKAGE.parents[0] / "rebotarm_description" / "rviz" / "display.rviz"
     ).read_text()
     assert "Durability Policy: Transient Local" in rviz_config
+
+
+def test_feedback_twin_has_one_tf_publisher_for_arm_and_gripper():
+    launch_source = (PACKAGE / "launch" / "feedback_twin.launch.py").read_text()
+    assert '"publish_robot_state": "false"' in launch_source

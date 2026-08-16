@@ -34,6 +34,7 @@ def generate_launch_description():
                 "motor_enable_mask": motor_enable_mask,
                 "start_arm_controller": allow_motor_enable,
                 "arm_controller_start_stopped": "true",
+                "publish_robot_state": "false",
             }.items(),
         ),
     ])

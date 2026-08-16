@@ -20,6 +20,7 @@ def generate_launch_description():
     motor_enable_mask = LaunchConfiguration("motor_enable_mask")
     start_arm_controller = LaunchConfiguration("start_arm_controller")
     arm_controller_start_stopped = LaunchConfiguration("arm_controller_start_stopped")
+    publish_robot_state = LaunchConfiguration("publish_robot_state")
 
     robot_description = ParameterValue(
         Command(
@@ -113,6 +114,12 @@ def generate_launch_description():
                 choices=["true", "false"],
                 description="Load and configure arm_controller without activating it",
             ),
+            DeclareLaunchArgument(
+                "publish_robot_state",
+                default_value="true",
+                choices=["true", "false"],
+                description="Publish TF from the controller joint states",
+            ),
             Node(
                 package="controller_manager",
                 executable="ros2_control_node",
@@ -124,6 +131,7 @@ def generate_launch_description():
                 package="robot_state_publisher",
                 executable="robot_state_publisher",
                 parameters=[{"robot_description": robot_description}],
+                condition=IfCondition(publish_robot_state),
                 output="screen",
             ),
             Node(
